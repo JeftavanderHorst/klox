@@ -1,4 +1,4 @@
-package klox
+package klox.compiler
 
 import java.io.File
 import kotlin.system.exitProcess
@@ -30,7 +30,7 @@ class KLox {
         val scanner = Scanner(source, errorReporter)
         val (tokens, errors) = scanner.scanTokens()
 
-        if(errors.isNotEmpty()) {
+        if (errors.isNotEmpty()) {
             hadError = true
         }
 

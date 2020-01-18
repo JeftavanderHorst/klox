@@ -1,4 +1,4 @@
-package klox
+package klox.compiler
 
 class Scanner(
     private val source: String,
@@ -137,7 +137,7 @@ class Scanner(
         return char in 'a'..'z'
                 || char in 'A'..'Z'
                 || char in '0'..'9'
-                || char == '_';
+                || char == '_'
     }
 
     private fun identifier() {

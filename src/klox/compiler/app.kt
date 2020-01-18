@@ -1,4 +1,4 @@
-package klox
+package klox.compiler
 
 import kotlin.system.exitProcess
 

@@ -1,4 +1,4 @@
-package klox
+package klox.compiler
 
 enum class TokenType {
     // Single-character tokens
