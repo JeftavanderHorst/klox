@@ -28,14 +28,19 @@ class KLox {
 
     private fun run(source: String) {
         val scanner = Scanner(source, errorReporter)
-        val (tokens, errors) = scanner.scanTokens()
+        val (tokens, scanErrors) = scanner.scanTokens()
 
-        if (errors.isNotEmpty()) {
-            hadError = true
+        if (scanErrors.isNotEmpty()) {
+            return
         }
 
-        for (token in tokens) {
-            println(token)
+        val parser = Parser(tokens, errorReporter)
+        val (expression, parseErrors) = parser.parse()
+
+        if (parseErrors.isNotEmpty()) {
+            return
         }
+
+        println(AstPrinter().print(expression.first()))
     }
 }

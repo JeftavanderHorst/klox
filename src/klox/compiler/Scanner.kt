@@ -34,7 +34,7 @@ class Scanner(
             scanToken()
         }
 
-        // tokens.add(Token(TokenType.EOF, "", null, line))
+        tokens.add(Token(TokenType.EOF, "", null, line))
         return ScanResult(tokens, ArrayList())
     }
 
