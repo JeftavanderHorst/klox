@@ -1,19 +1,16 @@
 package klox.compiler
 
 class Interpreter : Expression.Visitor<Any> {
-    class RuntimeError(private val token: Token, message: String) : RuntimeException(message)
-
-    fun interpret(expression: Expression) {
-        try {
-            val v = evaluate(expression)
-            println(stringify(v))
+    fun interpret(expression: Expression): Pair<String?, List<RuntimeError>> {
+        return try {
+            Pair(stringify(evaluate(expression)), emptyList())
         } catch (e: RuntimeError) {
-            println("error: $e")
+            Pair(null, listOf(e))
         }
     }
 
-    private fun stringify(obj: Any?): String {
-        if (obj == null) return "nil"
+    private fun stringify(obj: Any): String {
+        if (obj is Nil) return "nil"
 
         val text = obj.toString()
         if (obj is Double && text.endsWith(".0")) {
@@ -45,12 +42,16 @@ class Interpreter : Expression.Visitor<Any> {
                 (left as Double) * (right as Double)
             }
             TokenType.PLUS -> {
-                if (left is Double && right is Double) {
+                if ((left !is Double && left !is String) || (right !is Double && right !is String)) {
+                    throw AdditionNotSupportedForTypeError(expression.operator.line)
+                } else if (left is Double && right is Double) {
                     left + right
                 } else if (left is String && right is String) {
+                    println("${left::class.simpleName}")
+                    println("${right::class.simpleName}")
                     left + right
                 } else {
-                    throw RuntimeError(expression.operator, "Operands must be of the same type")
+                    throw IncompatibleTypesForAdditionError(expression.operator.line)
                 }
             }
             TokenType.GREATER -> {
@@ -110,11 +111,11 @@ class Interpreter : Expression.Visitor<Any> {
 
     private fun checkNumberOperand(operator: Token, operand: Any) {
         if (operand is Double) return
-        throw RuntimeError(operator, "Operand must be a number")
+        throw OperandNotDoubleError(operator.line)
     }
 
     private fun checkNumberOperands(operator: Token, left: Any, right: Any) {
         if (left is Double && right is Double) return
-        throw RuntimeError(operator, "Operand must be numbers")
+        throw OperandsNotDoubleError(operator.line)
     }
 }

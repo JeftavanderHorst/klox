@@ -2,29 +2,19 @@ package klox.compiler
 
 import java.lang.Exception
 
+enum class Nil { Nil }
+
 class Parser(
     private val tokens: List<Token>
 ) {
     private var errors: MutableList<ParseError> = ArrayList()
     private var current = 0
 
-    abstract class ParseError : CompileError()
-
-    class UnclosedParenthesesError(override val line: Int) : ParseError() {
-        override val message: String
-            get() = "Expected ')' after expression"
-    }
-
-    class NoExpressionProvided(override val line: Int) : ParseError() {
-        override val message: String
-            get() = "Expected expression"
-    }
-
-    fun parse(): ParseResult {
+    fun parse(): Pair<List<Expression>, List<ParseError>> {
         return try {
-            ParseResult(listOf(expression()), errors)
+            Pair(listOf(expression()), errors)
         } catch (error: Exception) {
-            ParseResult(ArrayList(), errors)
+            Pair(ArrayList(), errors)
         }
     }
 
@@ -81,7 +71,7 @@ class Parser(
     private fun primary(): Expression {
         if (match(TokenType.FALSE)) return Expression.Literal(false)
         if (match(TokenType.TRUE)) return Expression.Literal(true)
-        if (match(TokenType.NIL)) return Expression.Literal("null") // TODO
+        if (match(TokenType.NIL)) return Expression.Literal(Nil.Nil)
         if (match(TokenType.NUMBER, TokenType.STRING)) return Expression.Literal(previous().literal!!) // TODO
         if (match(TokenType.LEFT_PAREN)) {
             val expression = expression()

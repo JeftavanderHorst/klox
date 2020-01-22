@@ -27,26 +27,14 @@ class Scanner(
         "while" to TokenType.WHILE
     )
 
-    abstract class ScanError : CompileError()
-
-    class UnexpectedCharacterError(override val line: Int, private val char: Char?) : ScanError() {
-        override val message: String
-            get() = "Unexpected character '$char'"
-    }
-
-    class UnterminatedStringError(override val line: Int) : ScanError() {
-        override val message: String
-            get() = "Unterminated string"
-    }
-
-    fun scanTokens(): ScanResult {
+    fun scanTokens(): Pair<List<Token>, List<ScanError>> {
         while (!isAtEnd()) {
             start = current
             scanToken()
         }
 
         tokens.add(Token(TokenType.EOF, "", null, line))
-        return ScanResult(tokens, errors.toList())
+        return Pair(tokens, errors.toList())
     }
 
     private fun scanToken() {
