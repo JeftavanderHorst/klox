@@ -27,17 +27,17 @@ class KLox {
     }
 
     private fun run(source: String) {
-        val scanner = Scanner(source, errorReporter)
-        val (tokens, scanErrors) = scanner.scanTokens()
+        val (tokens, scanErrors) = Scanner(source).scanTokens()
 
         if (scanErrors.isNotEmpty()) {
+            errorReporter.display(scanErrors)
             return
         }
 
-        val parser = Parser(tokens, errorReporter)
-        val (expression, parseErrors) = parser.parse()
+        val (expression, parseErrors) = Parser(tokens).parse()
 
         if (parseErrors.isNotEmpty()) {
+            errorReporter.display(parseErrors)
             return
         }
 

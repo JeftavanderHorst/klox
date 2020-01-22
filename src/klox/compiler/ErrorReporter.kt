@@ -1,5 +1,5 @@
 package klox.compiler
 
 interface ErrorReporter {
-    fun error(line: Int, message: String)
+    fun display(errors: List<CompileError>)
 }

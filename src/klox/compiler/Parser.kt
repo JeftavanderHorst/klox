@@ -1,20 +1,30 @@
 package klox.compiler
 
-import java.lang.RuntimeException
+import java.lang.Exception
 
 class Parser(
-    private val tokens: List<Token>,
-    private val errorReporter: ErrorReporter
+    private val tokens: List<Token>
 ) {
-    var current = 0
+    private var errors: MutableList<ParseError> = ArrayList()
+    private var current = 0
 
-    class ParseError : RuntimeException()
+    abstract class ParseError : CompileError
+
+    class UnclosedParenthesesError(override val line: Int) : ParseError() {
+        override val message: String
+            get() = "Expected ')' after expression"
+    }
+
+    class NoExpressionProvided(override val line: Int) : ParseError() {
+        override val message: String
+            get() = "Expected expression"
+    }
 
     fun parse(): ParseResult {
         return try {
-            ParseResult(listOf(expression()), listOf())
-        } catch (error: ParseError) {
-            ParseResult(listOf(), listOf()) // TODO
+            ParseResult(listOf(expression()), errors)
+        } catch (error: Exception) {
+            ParseResult(ArrayList(), errors)
         }
     }
 
@@ -75,11 +85,12 @@ class Parser(
         if (match(TokenType.NUMBER, TokenType.STRING)) return Expression.Literal(previous().literal!!) // TODO
         if (match(TokenType.LEFT_PAREN)) {
             val expression = expression()
-            consume(TokenType.RIGHT_PAREN, "Expected ')' after expression")
+            consume(TokenType.RIGHT_PAREN, UnclosedParenthesesError(current))
             return Expression.Grouping(expression)
         }
 
-        throw error(peek(), "Expected expression")
+        errors.add(NoExpressionProvided(current))
+        throw Exception()
     }
 
     private fun match(vararg types: TokenType): Boolean {
@@ -93,9 +104,10 @@ class Parser(
         return false
     }
 
-    private fun consume(type: TokenType, message: String): Token? {
+    private fun consume(type: TokenType, error: ParseError): Token? {
         if (check(type)) return advance()
-        throw error(peek(), message)
+        errors.add(error)
+        throw Exception()
     }
 
     private fun check(type: TokenType): Boolean {
@@ -118,32 +130,5 @@ class Parser(
 
     private fun previous(): Token {
         return tokens[current - 1]
-    }
-
-    private fun error(token: Token, message: String): ParseError {
-        errorReporter.error(token.line, message)
-        return ParseError()
-    }
-
-    private fun synchronize() {
-        advance()
-
-        while (!isAtEnd()) {
-            if (previous().type == TokenType.SEMICOLON
-                || listOf(
-                    TokenType.CLASS,
-                    TokenType.FUN,
-                    TokenType.VAR,
-                    TokenType.FOR,
-                    TokenType.IF,
-                    TokenType.WHILE,
-                    TokenType.PRINT,
-                    TokenType.RETURN
-                ).contains(peek().type)
-            )
-                return
-
-            advance()
-        }
     }
 }

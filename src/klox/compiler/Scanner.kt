@@ -1,14 +1,13 @@
 package klox.compiler
 
 class Scanner(
-    private val source: String,
-    private val errorReporter: ConsoleErrorReporter
+    private val source: String
 ) {
     private var tokens: MutableList<Token> = ArrayList()
+    private var errors: MutableList<ScanError> = ArrayList()
     private var start = 0
     private var current = 0
     private var line = 1
-    private var hadError = false
     private val keywords: HashMap<String, TokenType> = hashMapOf(
         "and" to TokenType.AND,
         "class" to TokenType.CLASS,
@@ -28,6 +27,18 @@ class Scanner(
         "while" to TokenType.WHILE
     )
 
+    abstract class ScanError : CompileError
+
+    class UnexpectedCharacterError(override val line: Int, private val char: Char?) : ScanError() {
+        override val message: String
+            get() = "Unexpected character '$char'"
+    }
+
+    class UnterminatedStringError(override val line: Int) : ScanError() {
+        override val message: String
+            get() = "Unterminated string"
+    }
+
     fun scanTokens(): ScanResult {
         while (!isAtEnd()) {
             start = current
@@ -35,7 +46,7 @@ class Scanner(
         }
 
         tokens.add(Token(TokenType.EOF, "", null, line))
-        return ScanResult(tokens, ArrayList())
+        return ScanResult(tokens, errors.toList())
     }
 
     private fun scanToken() {
@@ -69,8 +80,7 @@ class Scanner(
             ' ', '\r', '\t' -> {
             }
             else -> {
-                errorReporter.error(line, "Unexpected character '$character'")
-                hadError = true
+                errors.add(UnexpectedCharacterError(line, character))
             }
         }
     }
@@ -111,7 +121,7 @@ class Scanner(
         }
 
         if (isAtEnd()) {
-            errorReporter.error(line, "Unterminated string")
+            errors.add(UnterminatedStringError(line))
         }
 
         // The closing "
