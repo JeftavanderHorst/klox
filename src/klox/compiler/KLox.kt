@@ -4,13 +4,17 @@ import java.io.File
 import kotlin.system.exitProcess
 
 class KLox {
-    private var hadError: Boolean = false
+    private var hadError = false
+    private var hadRuntimeError = false
     private val errorReporter = ConsoleErrorReporter()
+    private val interpreter = Interpreter()
 
     fun runFile(path: String) {
         run(File(path).readText())
         if (hadError)
             exitProcess(65)
+        if (hadRuntimeError)
+            exitProcess(70)
     }
 
     fun runPrompt() {
@@ -23,6 +27,7 @@ class KLox {
             if (line != null)
                 run(line)
             hadError = false
+            hadRuntimeError = false
         }
     }
 
@@ -31,6 +36,7 @@ class KLox {
 
         if (scanErrors.isNotEmpty()) {
             errorReporter.display(scanErrors)
+            hadError = true
             return
         }
 
@@ -38,9 +44,10 @@ class KLox {
 
         if (parseErrors.isNotEmpty()) {
             errorReporter.display(parseErrors)
+            hadError = true
             return
         }
 
-        println(AstPrinter().print(expression.first()))
+        interpreter.interpret(expression.first())
     }
 }

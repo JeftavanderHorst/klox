@@ -8,7 +8,7 @@ class Parser(
     private var errors: MutableList<ParseError> = ArrayList()
     private var current = 0
 
-    abstract class ParseError : CompileError
+    abstract class ParseError : CompileError()
 
     class UnclosedParenthesesError(override val line: Int) : ParseError() {
         override val message: String

@@ -1,6 +1,6 @@
 package klox.compiler
 
-interface CompileError {
-    val line: Int
-    val message: String
+abstract class CompileError : Throwable() {
+    abstract val line: Int
+    abstract override val message: String
 }

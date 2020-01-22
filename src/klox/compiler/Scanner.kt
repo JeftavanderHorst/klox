@@ -27,7 +27,7 @@ class Scanner(
         "while" to TokenType.WHILE
     )
 
-    abstract class ScanError : CompileError
+    abstract class ScanError : CompileError()
 
     class UnexpectedCharacterError(override val line: Int, private val char: Char?) : ScanError() {
         override val message: String
