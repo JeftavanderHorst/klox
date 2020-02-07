@@ -3,8 +3,8 @@ package klox.compiler
 class Scanner(
     private val source: String
 ) {
-    private var tokens: MutableList<Token> = ArrayList()
-    private var errors: MutableList<ScanError> = ArrayList()
+    private val tokens: MutableList<Token> = ArrayList()
+    private val errors: MutableList<ScanError> = ArrayList()
     private var start = 0
     private var current = 0
     private var line = 1
@@ -34,7 +34,7 @@ class Scanner(
         }
 
         tokens.add(Token(TokenType.EOF, "", null, line))
-        return Pair(tokens, errors.toList())
+        return Pair(tokens, errors)
     }
 
     private fun scanToken() {
@@ -68,7 +68,7 @@ class Scanner(
             ' ', '\r', '\t' -> {
             }
             else -> {
-                errors.add(UnexpectedCharacterError(line, character))
+                errors.add(ScanError(line, "Unexpected character $character"))
             }
         }
     }
@@ -109,7 +109,8 @@ class Scanner(
         }
 
         if (isAtEnd()) {
-            errors.add(UnterminatedStringError(line))
+            errors.add(ScanError(line, "Unterminated string"))
+            return
         }
 
         // The closing "

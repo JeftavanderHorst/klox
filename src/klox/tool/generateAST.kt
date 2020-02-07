@@ -10,14 +10,28 @@ fun main(args: Array<String>) {
     }
 
     val outputDirectory = args[0]
+
     defineAst(
         outputDirectory,
-        "Expression",
+        "Expr",
         hashMapOf(
-            "Binary" to listOf("left: Expression", "operator: Token", "right: Expression"),
-            "Grouping" to listOf("expression: Expression"),
+            "Assign" to listOf("name: Token", "value: Expr"),
+            "Binary" to listOf("left: Expr", "operator: Token", "right: Expr"),
+            "Grouping" to listOf("expr: Expr"),
             "Literal" to listOf("value: Any"),
-            "Unary" to listOf("operator: Token", "right: Expression")
+            "Unary" to listOf("operator: Token", "right: Expr"),
+            "Variable" to listOf("name: Token")
+        )
+    )
+
+    defineAst(
+        outputDirectory,
+        "Stmt",
+        hashMapOf(
+            "Block" to listOf("statements: List<Stmt>"),
+            "Expression" to listOf("expression: Expr"),
+            "Print" to listOf("expression: Expr"),
+            "Var" to listOf("name: Token", "initializer: Expr?")
         )
     )
 }
@@ -32,6 +46,7 @@ fun defineAst(outputDir: String, baseName: String, types: HashMap<String, List<S
 
     defineVisitor(writer, baseName, types)
     writer.println("abstract fun <R> accept(visitor: Visitor<R>): R")
+    writer.println()
 
     defineTypes(writer, baseName, types)
 
