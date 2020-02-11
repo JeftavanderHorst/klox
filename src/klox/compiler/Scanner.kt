@@ -24,7 +24,10 @@ class Scanner(
         "this" to TokenType.THIS,
         "true" to TokenType.TRUE,
         "var" to TokenType.VAR,
-        "while" to TokenType.WHILE
+        "while" to TokenType.WHILE,
+        "break" to TokenType.BREAK
+        "break" to TokenType.BREAK,
+        "continue" to TokenType.CONTINUE
     )
 
     fun scanTokens(): Pair<List<Token>, List<ScanError>> {

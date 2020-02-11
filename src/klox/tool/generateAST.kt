@@ -19,6 +19,7 @@ fun main(args: Array<String>) {
             "Binary" to listOf("left: Expr", "operator: Token", "right: Expr"),
             "Grouping" to listOf("expr: Expr"),
             "Literal" to listOf("value: Any"),
+            "Logical" to listOf("left: Expr", "operator: Token", "right: Expr"),
             "Unary" to listOf("operator: Token", "right: Expr"),
             "Variable" to listOf("name: Token")
         )
@@ -30,8 +31,13 @@ fun main(args: Array<String>) {
         hashMapOf(
             "Block" to listOf("statements: List<Stmt>"),
             "Expression" to listOf("expression: Expr"),
+            "If" to listOf("condition: Expr", "thenBranch: Stmt", "elseBranch: Stmt"),
+            "Break" to emptyList(),
+            "Continue" to emptyList(),
+            "While" to listOf("condition: Expr", "body: Stmt"),
             "Print" to listOf("expression: Expr"),
-            "Var" to listOf("name: Token", "initializer: Expr?")
+            "Var" to listOf("name: Token", "initializer: Expr?"),
+            "Empty" to emptyList()
         )
     )
 }

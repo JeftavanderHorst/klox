@@ -3,6 +3,9 @@ package klox.compiler
 class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>, Stmt.Visitor<Unit> {
     private var environment = Environment()
 
+    class BreakException : Throwable()
+    class ContinueException : Throwable()
+
     fun interpret(statements: List<Stmt>) {
         try {
             for (statement in statements) {
@@ -42,8 +45,39 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
         println(stringify(evaluate(stmt.expression)))
     }
 
+    override fun visitIfStmt(stmt: Stmt.If) {
+        if (isTruthy(evaluate(stmt.condition))) {
+            execute(stmt.thenBranch)
+        } else {
+            execute(stmt.elseBranch)
+        }
+    }
+
     override fun visitExpressionStmt(stmt: Stmt.Expression) {
         evaluate(stmt.expression)
+    }
+
+    override fun visitWhileStmt(stmt: Stmt.While) {
+        try {
+            while (isTruthy(evaluate(stmt.condition))) {
+                try {
+                    execute(stmt.body)
+                }
+                catch(e: ContinueException) {
+                    // Do nothing
+                }
+            }
+        } catch (e: BreakException) {
+            // Do nothing
+        }
+    }
+
+    override fun visitBreakStmt(stmt: Stmt.Break) {
+        throw BreakException()
+    }
+
+    override fun visitContinueStmt(stmt: Stmt.Continue) {
+        throw ContinueException()
     }
 
     override fun visitEmptyStmt(stmt: Stmt.Empty) {
@@ -108,6 +142,18 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
             TokenType.EQUAL_EQUAL -> isEqual(left, right)
             else -> throw Exception("Should be unreachable")
         }
+    }
+
+    override fun visitLogicalExpr(expr: Expr.Logical): Any {
+        val left = evaluate(expr.left)
+
+        if (expr.operator.type == TokenType.OR) {
+            if (isTruthy(left)) return true
+        } else {
+            if (!isTruthy(left)) return false
+        }
+
+        return evaluate(expr.right)
     }
 
     override fun visitUnaryExpr(expr: Expr.Unary): Any {

@@ -4,15 +4,40 @@ package klox.compiler
 
 abstract class Expr {
     interface Visitor<R> {
+        fun visitVariableExpr(expr: Variable): R
+        fun visitLiteralExpr(expr: Literal): R
+        fun visitLogicalExpr(expr: Logical): R
         fun visitAssignExpr(expr: Assign): R
         fun visitGroupingExpr(expr: Grouping): R
         fun visitBinaryExpr(expr: Binary): R
-        fun visitVariableExpr(expr: Variable): R
         fun visitUnaryExpr(expr: Unary): R
-        fun visitLiteralExpr(expr: Literal): R
     }
 
     abstract fun <R> accept(visitor: Visitor<R>): R
+
+    class Variable(
+        val name: Token
+    ) : Expr() {
+        override fun <R> accept(visitor: Visitor<R>): R {
+            return visitor.visitVariableExpr(this)
+        }
+    }
+
+    class Literal(
+        val value: Any
+    ) : Expr() {
+        override fun <R> accept(visitor: Visitor<R>): R {
+            return visitor.visitLiteralExpr(this)
+        }
+    }
+
+    class Logical(
+        val left: Expr, val operator: Token, val right: Expr
+    ) : Expr() {
+        override fun <R> accept(visitor: Visitor<R>): R {
+            return visitor.visitLogicalExpr(this)
+        }
+    }
 
     class Assign(
         val name: Token, val value: Expr
@@ -38,27 +63,11 @@ abstract class Expr {
         }
     }
 
-    class Variable(
-        val name: Token
-    ) : Expr() {
-        override fun <R> accept(visitor: Visitor<R>): R {
-            return visitor.visitVariableExpr(this)
-        }
-    }
-
     class Unary(
         val operator: Token, val right: Expr
     ) : Expr() {
         override fun <R> accept(visitor: Visitor<R>): R {
             return visitor.visitUnaryExpr(this)
-        }
-    }
-
-    class Literal(
-        val value: Any
-    ) : Expr() {
-        override fun <R> accept(visitor: Visitor<R>): R {
-            return visitor.visitLiteralExpr(this)
         }
     }
 }

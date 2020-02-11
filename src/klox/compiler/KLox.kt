@@ -40,6 +40,7 @@ class KLox {
             return RunResult.STATIC_ERROR
         }
 
+//        AstPrinter().print(statements)
         interpreter.interpret(statements)
 
         return RunResult.SUCCESS

@@ -1,5 +1,7 @@
 package klox.compiler
 
+// Correctly display whitespace in blocks
+
 class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
     fun print(statements: List<Stmt>) {
         for (stmt in statements) {
@@ -21,6 +23,25 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
 
     override fun visitPrintStmt(stmt: Stmt.Print): String {
         return "print: " + stmt.expression.accept(this)
+    }
+
+    override fun visitIfStmt(stmt: Stmt.If): String {
+        return "if:\n\t${stmt.condition.accept(this)}" +
+                "\n\t[ ${stmt.thenBranch.accept(this)} ]" +
+                "\n\t[ ${stmt.elseBranch.accept(this)} ]"
+    }
+
+    override fun visitWhileStmt(stmt: Stmt.While): String {
+        return "while:\n\t${stmt.condition.accept(this)}" +
+                "\n\t[ ${stmt.body.accept(this)} ]"
+    }
+
+    override fun visitBreakStmt(stmt: Stmt.Break): String {
+        return "break"
+    }
+
+    override fun visitContinueStmt(stmt: Stmt.Continue): String {
+        return "continue"
     }
 
     override fun visitVarStmt(stmt: Stmt.Var): String {
@@ -53,5 +74,9 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
 
     override fun visitVariableExpr(expr: Expr.Variable): String {
         return "variable: " + expr.name
+    }
+
+    override fun visitLogicalExpr(expr: Expr.Logical): String {
+        return parenthesize(expr.operator.lexeme, expr.left, expr.right)
     }
 }
