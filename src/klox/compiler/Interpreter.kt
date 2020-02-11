@@ -111,6 +111,10 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
                 checkNumberOperands(expr.operator, left, right)
                 (left as Double) * (right as Double)
             }
+            TokenType.MODULO -> {
+                checkNumberOperands(expr.operator, left, right)
+                (left as Double) % (right as Double)
+            }
             TokenType.PLUS -> {
                 if ((left !is Double && left !is String) || (right !is Double && right !is String)) {
                     throw RuntimeError(expr.operator.line, "Cannot perform addition on values of this type")
@@ -140,8 +144,38 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
             }
             TokenType.BANG_EQUAL -> !isEqual(left, right)
             TokenType.EQUAL_EQUAL -> isEqual(left, right)
+            TokenType.COALESCE -> {
+                if (left != Nil.Nil) {
+                    left
+                } else {
+                    right
+                }
+            }
             else -> throw Exception("Should be unreachable")
         }
+    }
+
+    override fun visitTernaryExpr(expr: Expr.Ternary): Any {
+        if (expr.operator1.type == TokenType.QUESTION && expr.operator2.type == TokenType.COLON) {
+            return if (isTruthy(expr.left)) {
+                evaluate(expr.middle)
+            } else {
+                evaluate(expr.right)
+            }
+        }
+
+        if (expr.operator1.type == TokenType.BETWEEN && expr.operator2.type == TokenType.BETWEEN_AND) {
+            val left = evaluate(expr.left)
+            val middle = evaluate(expr.middle)
+            val right = evaluate(expr.right)
+            if (left !is Double || middle !is Double || right !is Double) {
+                throw RuntimeError(expr.operator1.line, "All arguments to 'between' operator must be numbers")
+            }
+
+            return (left >= middle && left <= right) || (left >= right && left <= middle)
+        }
+
+        throw Exception("Should be unreachable")
     }
 
     override fun visitLogicalExpr(expr: Expr.Logical): Any {

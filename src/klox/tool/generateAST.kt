@@ -17,6 +17,7 @@ fun main(args: Array<String>) {
         hashMapOf(
             "Assign" to listOf("name: Token", "value: Expr"),
             "Binary" to listOf("left: Expr", "operator: Token", "right: Expr"),
+            "Ternary" to listOf("left: Expr", "operator1: Token", "middle: Expr", "operator2: Token", "right: Expr"),
             "Grouping" to listOf("expr: Expr"),
             "Literal" to listOf("value: Any"),
             "Logical" to listOf("left: Expr", "operator: Token", "right: Expr"),

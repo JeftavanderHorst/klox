@@ -5,6 +5,7 @@ package klox.compiler
 abstract class Expr {
     interface Visitor<R> {
         fun visitVariableExpr(expr: Variable): R
+        fun visitTernaryExpr(expr: Ternary): R
         fun visitLiteralExpr(expr: Literal): R
         fun visitLogicalExpr(expr: Logical): R
         fun visitAssignExpr(expr: Assign): R
@@ -20,6 +21,14 @@ abstract class Expr {
     ) : Expr() {
         override fun <R> accept(visitor: Visitor<R>): R {
             return visitor.visitVariableExpr(this)
+        }
+    }
+
+    class Ternary(
+        val left: Expr, val operator1: Token, val middle: Expr, val operator2: Token, val right: Expr
+    ) : Expr() {
+        override fun <R> accept(visitor: Visitor<R>): R {
+            return visitor.visitTernaryExpr(this)
         }
     }
 

@@ -10,7 +10,7 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
     }
 
     private fun parenthesize(name: String, vararg expressions: Expr): String {
-        return "($name " + expressions.joinToString { expression -> " " + expression.accept(this) } + ")"
+        return "($name, " + expressions.joinToString { expression -> " " + expression.accept(this) } + ")"
     }
 
     override fun visitBlockStmt(stmt: Stmt.Block): String {
@@ -58,6 +58,10 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
 
     override fun visitBinaryExpr(expr: Expr.Binary): String {
         return parenthesize(expr.operator.lexeme, expr.left, expr.right)
+    }
+
+    override fun visitTernaryExpr(expr: Expr.Ternary): String {
+        return parenthesize("${expr.operator1.lexeme} ${expr.operator2.lexeme}", expr.left, expr.middle, expr.right)
     }
 
     override fun visitUnaryExpr(expr: Expr.Unary): String {

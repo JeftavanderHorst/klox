@@ -9,7 +9,6 @@ class Scanner(
     private var current = 0
     private var line = 1
     private val keywords: HashMap<String, TokenType> = hashMapOf(
-        "and" to TokenType.AND,
         "class" to TokenType.CLASS,
         "else" to TokenType.ELSE,
         "false" to TokenType.FALSE,
@@ -17,7 +16,6 @@ class Scanner(
         "fun" to TokenType.FUN,
         "if" to TokenType.IF,
         "nil" to TokenType.NIL,
-        "or" to TokenType.OR,
         "print" to TokenType.PRINT,
         "return" to TokenType.RETURN,
         "super" to TokenType.SUPER,
@@ -25,7 +23,8 @@ class Scanner(
         "true" to TokenType.TRUE,
         "var" to TokenType.VAR,
         "while" to TokenType.WHILE,
-        "break" to TokenType.BREAK
+        "between" to TokenType.BETWEEN,
+        "and" to TokenType.BETWEEN_AND,
         "break" to TokenType.BREAK,
         "continue" to TokenType.CONTINUE
     )
@@ -48,22 +47,56 @@ class Scanner(
             '}' -> addToken(TokenType.RIGHT_BRACE)
             ',' -> addToken(TokenType.COMMA)
             '.' -> addToken(TokenType.DOT)
-            '-' -> addToken(TokenType.MINUS)
-            '+' -> addToken(TokenType.PLUS)
             ';' -> addToken(TokenType.SEMICOLON)
-            '*' -> addToken(TokenType.STAR)
+            '+' -> addToken(if (match('=')) TokenType.PLUS_EQUAL else TokenType.PLUS)
+            '-' -> addToken(if (match('=')) TokenType.MINUS_EQUAL else TokenType.MINUS)
+            '*' -> addToken(if (match('=')) TokenType.STAR_EQUAL else TokenType.STAR)
+            '/' -> {
+                when {
+                    match('/') -> {
+                        // We are in a comment, keep consuming characters until we see a newline
+                        while (peek() != '\n' && !isAtEnd()) advance()
+                    }
+                    match('=') -> {
+                        addToken(TokenType.SLASH_EQUAL)
+                    }
+                    else -> {
+                        addToken(TokenType.SLASH)
+                    }
+                }
+            }
+            '%' -> addToken(if (match('=')) TokenType.MODULO_EQUAL else TokenType.MODULO)
+            '&' -> {
+                if (match('&')) {
+                    addToken(TokenType.AND)
+                } else {
+                    errors.add(ScanError(line, "Expected second '&'")) // TODO i don't think this advances
+                }
+            }
+            '?' -> {
+                if (match('?')) {
+                    if (peek() == '=') {
+                        advance()
+                        addToken(TokenType.COALESCE_EQUAL)
+                    } else {
+                        addToken(TokenType.COALESCE)
+                    }
+                } else {
+                    addToken(TokenType.QUESTION)
+                }
+            }
+            ':' -> addToken(TokenType.COLON)
+            '|' -> {
+                if (match('|')) {
+                    addToken(TokenType.OR)
+                } else {
+                    errors.add(ScanError(line, "Expected second '|'"))
+                }
+            }
             '!' -> addToken(if (match('=')) TokenType.BANG_EQUAL else TokenType.BANG)
             '=' -> addToken(if (match('=')) TokenType.EQUAL_EQUAL else TokenType.EQUAL)
             '<' -> addToken(if (match('=')) TokenType.LESS_EQUAL else TokenType.LESS)
             '>' -> addToken(if (match('=')) TokenType.GREATER_EQUAL else TokenType.GREATER)
-            '/' -> {
-                if (match('/')) {
-                    // We are in a comment, keep consuming characters until we see a newline
-                    while (peek() != '\n' && !isAtEnd()) advance()
-                } else {
-                    addToken(TokenType.SLASH)
-                }
-            }
             '"' -> stringLiteral()
             in '0'..'9' -> numberLiteral()
             in 'a'..'z', in 'A'..'Z', '_' -> identifier()

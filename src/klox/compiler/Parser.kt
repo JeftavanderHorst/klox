@@ -164,18 +164,97 @@ class Parser(
     }
 
     private fun assignment(): Expr {
-        val expr = or()
+        val expr = ternary()
 
-        if (match(TokenType.EQUAL)) {
-            val equals = previous()
-            val value = assignment()
+        if (match(
+                TokenType.EQUAL,
+                TokenType.PLUS_EQUAL,
+                TokenType.MINUS_EQUAL,
+                TokenType.STAR_EQUAL,
+                TokenType.SLASH_EQUAL,
+                TokenType.MODULO_EQUAL,
+                TokenType.COALESCE_EQUAL
+            )
+        ) {
+            val operator = previous()
 
             if (expr is Expr.Variable) {
                 val name = expr.name
+                val value = assignment()
+
+                if (operator.type != TokenType.EQUAL) {
+                    val binaryOperator = when (operator.type) {
+                        TokenType.PLUS_EQUAL -> TokenType.PLUS
+                        TokenType.MINUS_EQUAL -> TokenType.MINUS
+                        TokenType.STAR_EQUAL -> TokenType.STAR
+                        TokenType.SLASH_EQUAL -> TokenType.SLASH
+                        TokenType.MODULO_EQUAL -> TokenType.MODULO
+                        TokenType.COALESCE_EQUAL -> TokenType.COALESCE
+                        else -> {
+                            throw error(operator, "Unknown assignment operator '${operator.lexeme}'")
+                        }
+                    }
+
+                    val token = Token(binaryOperator, operator.lexeme, null, operator.line)
+                    return Expr.Assign(name, Expr.Binary(Expr.Variable(name), token, value))
+                }
+
                 return Expr.Assign(name, value)
             }
 
-            throw error(equals, "Invalid assignment target")
+            throw error(operator, "Invalid assignment target")
+        }
+
+        return expr
+    }
+
+    private fun ternary(): Expr {
+        var expr = coalescing()
+
+        if (match(TokenType.QUESTION)) {
+            expr = Expr.Ternary(
+                expr,
+                previous(),
+                coalescing(),
+                consume(TokenType.COLON, "Expected ':' in ternary conditional expression"),
+                coalescing()
+            )
+
+            if (peek().type == TokenType.QUESTION) {
+                throw error(peek(), "Chained ternary conditional expressions are ambiguous and therefore forbidden")
+            }
+        }
+
+        if (match(TokenType.COLON)) {
+            throw error(previous(), "Character ':' used in an illegal context")
+        }
+
+        if (match(TokenType.BETWEEN)) {
+            expr = Expr.Ternary(
+                expr,
+                previous(),
+                coalescing(),
+                consume(TokenType.BETWEEN_AND, "Expected 'and' in 'between' expression"),
+                coalescing()
+            )
+
+            if (peek().type == TokenType.BETWEEN) {
+                throw error(peek(), "Chained uses of 'between' are ambiguous and therefore forbidden")
+            }
+        }
+
+        if (match(TokenType.BETWEEN_AND)) {
+            throw error(previous(), "Keyword 'and' used in an illegal context (did you mean '&&'?)")
+        }
+
+        return expr
+    }
+
+    private fun coalescing(): Expr {
+        var expr = or()
+
+        while (match(TokenType.COALESCE)) {
+            expr = Expr.Binary(expr, previous(), or())
         }
 
         return expr
@@ -238,7 +317,7 @@ class Parser(
     private fun multiplication(): Expr {
         var expression = unary()
 
-        while (match(TokenType.SLASH, TokenType.STAR)) {
+        while (match(TokenType.SLASH, TokenType.STAR, TokenType.MODULO)) {
             expression = Expr.Binary(expression, previous(), unary())
         }
 
