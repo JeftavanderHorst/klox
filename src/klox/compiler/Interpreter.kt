@@ -1,10 +1,24 @@
 package klox.compiler
 
+import klox.compiler.std.Clock
+import klox.compiler.std.ReadLine
+import klox.compiler.std.Sleep
+import klox.compiler.std.Print
+
 class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>, Stmt.Visitor<Unit> {
-    private var environment = Environment()
+    private val globals = Environment()
+    private var environment = globals
+    private val locals: MutableMap<Expr, Int> = HashMap()
 
     class BreakException : Throwable()
     class ContinueException : Throwable()
+
+    init {
+        globals.define("clock", Clock())
+        globals.define("sleep", Sleep())
+        globals.define("readLine", ReadLine())
+        globals.define("print", Print())
+    }
 
     fun interpret(statements: List<Stmt>) {
         try {
@@ -20,7 +34,11 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
         statement.accept(this)
     }
 
-    private fun executeBlock(statements: List<Stmt>, environment: Environment) {
+    fun resolve(expr: Expr, depth: Int) {
+        locals[expr] = depth
+    }
+
+    fun executeBlock(statements: List<Stmt>, environment: Environment) {
         val previous = this.environment
         try {
             this.environment = environment
@@ -41,10 +59,6 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
         environment.define(stmt.name.lexeme, value)
     }
 
-    override fun visitPrintStmt(stmt: Stmt.Print) {
-        println(stringify(evaluate(stmt.expression)))
-    }
-
     override fun visitIfStmt(stmt: Stmt.If) {
         if (isTruthy(evaluate(stmt.condition))) {
             execute(stmt.thenBranch)
@@ -62,8 +76,7 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
             while (isTruthy(evaluate(stmt.condition))) {
                 try {
                     execute(stmt.body)
-                }
-                catch(e: ContinueException) {
+                } catch (e: ContinueException) {
                     // Do nothing
                 }
             }
@@ -80,13 +93,35 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
         throw ContinueException()
     }
 
+    override fun visitFunctionStmt(stmt: Stmt.Function) {
+        val function = LoxFunction(stmt, environment)
+        environment.define(stmt.name.lexeme, function)
+    }
+
+    override fun visitReturnStmt(stmt: Stmt.Return) {
+        val value = if (stmt.value != null) {
+            evaluate(stmt.value)
+        } else {
+            Nil.Nil
+        }
+
+        throw Return(value)
+    }
+
     override fun visitEmptyStmt(stmt: Stmt.Empty) {
         return
     }
 
     override fun visitAssignExpr(expr: Expr.Assign): Any {
         val value = evaluate(expr.value)
-        environment.assign(expr.name, value)
+
+        val distance = locals[expr]
+        if (distance != null) {
+            environment.assignAt(distance, expr.name, value)
+        } else {
+            globals.assign(expr.name, value)
+        }
+
         return value
     }
 
@@ -182,9 +217,11 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
         val left = evaluate(expr.left)
 
         if (expr.operator.type == TokenType.OR) {
-            if (isTruthy(left)) return true
+            if (isTruthy(left)) return left
+        } else if (expr.operator.type == TokenType.OR) {
+            if (!isTruthy(left)) return left
         } else {
-            if (!isTruthy(left)) return false
+            throw Exception("Should be unreachable")
         }
 
         return evaluate(expr.right)
@@ -208,7 +245,31 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
     }
 
     override fun visitVariableExpr(expr: Expr.Variable): Any {
-        return environment.get(expr.name)
+        return lookUpVariable(expr.name, expr)
+    }
+
+    private fun lookUpVariable(name: Token, expr: Expr): Any {
+        val distance = locals[expr]
+        return if (distance != null) {
+            environment.getAt(distance, name.lexeme)
+        } else {
+            globals.get(name)
+        }
+    }
+
+    override fun visitCallExpr(expr: Expr.Call): Any {
+        val callee = evaluate(expr.callee)
+        val arguments = expr.arguments.map { argument -> evaluate(argument) }
+
+        if (callee !is LoxCallable) {
+            throw RuntimeError(expr.paren.line, "Expression is not a function")
+        }
+
+        if (arguments.size != callee.arity()) {
+            throw RuntimeError(expr.paren.line, "Expected ${callee.arity()} arguments but received ${arguments.size}")
+        }
+
+        return callee.call(this, arguments)
     }
 
     private fun evaluate(expr: Expr): Any {
@@ -217,7 +278,7 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
 
     private fun isTruthy(obj: Any?) = when (obj) {
         is Boolean -> obj
-        null -> false
+        Nil.Nil, null -> false
         else -> true
     }
 

@@ -40,6 +40,12 @@ class KLox {
             return RunResult.STATIC_ERROR
         }
 
+        val resolveErrors = Resolver(interpreter).resolve(statements)
+        if (resolveErrors.isNotEmpty()) {
+            errorReporter.display(resolveErrors)
+            return RunResult.STATIC_ERROR
+        }
+
 //        AstPrinter().print(statements)
         interpreter.interpret(statements)
 

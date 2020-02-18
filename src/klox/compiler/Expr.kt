@@ -4,6 +4,7 @@ package klox.compiler
 
 abstract class Expr {
     interface Visitor<R> {
+        fun visitCallExpr(expr: Call): R
         fun visitVariableExpr(expr: Variable): R
         fun visitTernaryExpr(expr: Ternary): R
         fun visitLiteralExpr(expr: Literal): R
@@ -15,6 +16,14 @@ abstract class Expr {
     }
 
     abstract fun <R> accept(visitor: Visitor<R>): R
+
+    class Call(
+        val callee: Expr, val paren: Token, val arguments: List<Expr>
+    ) : Expr() {
+        override fun <R> accept(visitor: Visitor<R>): R {
+            return visitor.visitCallExpr(this)
+        }
+    }
 
     class Variable(
         val name: Token

@@ -16,7 +16,6 @@ class Scanner(
         "fun" to TokenType.FUN,
         "if" to TokenType.IF,
         "nil" to TokenType.NIL,
-        "print" to TokenType.PRINT,
         "return" to TokenType.RETURN,
         "super" to TokenType.SUPER,
         "this" to TokenType.THIS,

@@ -1,6 +1,6 @@
 package klox.compiler
 
-// Correctly display whitespace in blocks
+// TODO: Correctly display whitespace in blocks
 
 class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
     fun print(statements: List<Stmt>) {
@@ -19,10 +19,6 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
 
     override fun visitExpressionStmt(stmt: Stmt.Expression): String {
         return "expr: " + stmt.expression.accept(this)
-    }
-
-    override fun visitPrintStmt(stmt: Stmt.Print): String {
-        return "print: " + stmt.expression.accept(this)
     }
 
     override fun visitIfStmt(stmt: Stmt.If): String {
@@ -44,8 +40,18 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
         return "continue"
     }
 
+    override fun visitFunctionStmt(stmt: Stmt.Function): String {
+        return "function ${stmt.name.lexeme}:\n\t" +
+                stmt.params.joinToString { param -> param.lexeme } + "\n\t" +
+                stmt.body.joinToString { param -> param.accept(this) }
+    }
+
     override fun visitVarStmt(stmt: Stmt.Var): String {
         return "var: " + stmt.name + " = " + stmt.initializer?.accept(this)
+    }
+
+    override fun visitReturnStmt(stmt: Stmt.Return): String {
+        return "return: " + stmt.value?.accept(this)
     }
 
     override fun visitEmptyStmt(stmt: Stmt.Empty): String {
@@ -82,5 +88,10 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
 
     override fun visitLogicalExpr(expr: Expr.Logical): String {
         return parenthesize(expr.operator.lexeme, expr.left, expr.right)
+    }
+
+    override fun visitCallExpr(expr: Expr.Call): String {
+        return "call: " + expr.callee.accept(this) + " (" +
+                expr.arguments.joinToString { arg -> arg.accept(this) } + ")"
     }
 }

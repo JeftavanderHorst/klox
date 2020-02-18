@@ -4,8 +4,9 @@ package klox.compiler
 
 abstract class Stmt {
     interface Visitor<R> {
-        fun visitPrintStmt(stmt: Print): R
+        fun visitFunctionStmt(stmt: Function): R
         fun visitEmptyStmt(stmt: Empty): R
+        fun visitReturnStmt(stmt: Return): R
         fun visitExpressionStmt(stmt: Expression): R
         fun visitVarStmt(stmt: Var): R
         fun visitBreakStmt(stmt: Break): R
@@ -17,11 +18,11 @@ abstract class Stmt {
 
     abstract fun <R> accept(visitor: Visitor<R>): R
 
-    class Print(
-        val expression: Expr
+    class Function(
+        val name: Token, val params: List<Token>, val body: List<Stmt>
     ) : Stmt() {
         override fun <R> accept(visitor: Visitor<R>): R {
-            return visitor.visitPrintStmt(this)
+            return visitor.visitFunctionStmt(this)
         }
     }
 
@@ -30,6 +31,14 @@ abstract class Stmt {
     ) : Stmt() {
         override fun <R> accept(visitor: Visitor<R>): R {
             return visitor.visitEmptyStmt(this)
+        }
+    }
+
+    class Return(
+        val keyword: Token, val value: Expr?
+    ) : Stmt() {
+        override fun <R> accept(visitor: Visitor<R>): R {
+            return visitor.visitReturnStmt(this)
         }
     }
 

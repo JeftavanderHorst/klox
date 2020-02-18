@@ -18,6 +18,7 @@ fun main(args: Array<String>) {
             "Assign" to listOf("name: Token", "value: Expr"),
             "Binary" to listOf("left: Expr", "operator: Token", "right: Expr"),
             "Ternary" to listOf("left: Expr", "operator1: Token", "middle: Expr", "operator2: Token", "right: Expr"),
+            "Call" to listOf("callee: Expr", "paren: Token", "arguments: List<Expr>"),
             "Grouping" to listOf("expr: Expr"),
             "Literal" to listOf("value: Any"),
             "Logical" to listOf("left: Expr", "operator: Token", "right: Expr"),
@@ -36,8 +37,9 @@ fun main(args: Array<String>) {
             "Break" to emptyList(),
             "Continue" to emptyList(),
             "While" to listOf("condition: Expr", "body: Stmt"),
-            "Print" to listOf("expression: Expr"),
             "Var" to listOf("name: Token", "initializer: Expr?"),
+            "Function" to listOf("name: Token", "params: List<Token>", "body: List<Stmt>"),
+            "Return" to listOf("keyword: Token", "value: Expr?"),
             "Empty" to emptyList()
         )
     )

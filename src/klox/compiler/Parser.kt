@@ -22,6 +22,7 @@ class Parser(
     private fun declaration(): Stmt {
         try {
             if (match(TokenType.VAR)) return varDeclaration()
+            if (match(TokenType.FUN)) return function("function")
             return statement()
         } catch (e: ParseError) {
             synchronize()
@@ -31,10 +32,10 @@ class Parser(
 
     private fun statement(): Stmt {
         if (match(TokenType.IF)) return ifStatement()
-        if (match(TokenType.PRINT)) return printStatement()
         if (match(TokenType.WHILE)) return whileStatement()
         if (match(TokenType.FOR)) return forStatement()
         if (match(TokenType.BREAK)) return breakStatement()
+        if (match(TokenType.RETURN)) return returnStatement()
         if (match(TokenType.CONTINUE)) return continueStatement()
         if (match(TokenType.LEFT_BRACE)) return Stmt.Block(block())
         return expressionStatement()
@@ -55,10 +56,17 @@ class Parser(
         return Stmt.If(condition, thenBranch, elseBranch)
     }
 
-    private fun printStatement(): Stmt {
-        val value = expression()
-        consume(TokenType.SEMICOLON, "Expected ';' after value")
-        return Stmt.Print(value)
+    private fun returnStatement(): Stmt {
+        val keyword = previous()
+        val value = if (!check(TokenType.SEMICOLON)) {
+            expression()
+        } else {
+            null
+        }
+
+        consume(TokenType.SEMICOLON, "Expected ';' after return")
+
+        return Stmt.Return(keyword, value)
     }
 
     private fun breakStatement(): Stmt {
@@ -147,6 +155,22 @@ class Parser(
         val value = expression()
         consume(TokenType.SEMICOLON, "Expected ';' after value")
         return Stmt.Expression(value)
+    }
+
+    private fun function(kind: String): Stmt.Function {
+        val name = consume(TokenType.IDENTIFIER, "Expected $kind name")
+        consume(TokenType.LEFT_PAREN, "Expected '(' after $kind name")
+        val parameters: MutableList<Token> = ArrayList()
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                parameters.add(consume(TokenType.IDENTIFIER, "Expected parameter name"))
+            } while (match(TokenType.COMMA))
+        }
+
+        consume(TokenType.RIGHT_PAREN, "Expected ')' after $kind parameters")
+        consume(TokenType.LEFT_BRACE, "Expected '{' to start $kind body")
+        val body = block()
+        return Stmt.Function(name, parameters, body)
     }
 
     private fun block(): List<Stmt> {
@@ -327,7 +351,34 @@ class Parser(
     private fun unary(): Expr {
         if (match(TokenType.BANG, TokenType.MINUS))
             return Expr.Unary(previous(), unary())
-        return primary()
+        return call()
+    }
+
+    private fun finishCall(callee: Expr): Expr {
+        val arguments: MutableList<Expr> = ArrayList()
+        if (!check(TokenType.RIGHT_PAREN)) {
+            do {
+                arguments.add(expression())
+            } while (match(TokenType.COMMA))
+        }
+
+        val paren = consume(TokenType.RIGHT_PAREN, "Expected ')' after arguments")
+
+        return Expr.Call(callee, paren, arguments)
+    }
+
+    private fun call(): Expr {
+        var expr = primary()
+
+        while (true) {
+            if (match(TokenType.LEFT_PAREN)) {
+                expr = finishCall(expr)
+            } else {
+                break
+            }
+        }
+
+        return expr
     }
 
     private fun primary(): Expr {
@@ -405,7 +456,6 @@ class Parser(
                 || next == TokenType.FOR
                 || next == TokenType.IF
                 || next == TokenType.WHILE
-                || next == TokenType.PRINT
                 || next == TokenType.RETURN
                 || next == TokenType.BREAK
                 || next == TokenType.CONTINUE
