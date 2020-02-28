@@ -91,7 +91,7 @@ class Parser(
         val name = consume(TokenType.IDENTIFIER, "Expected variable name")
         val initializer = if (match(TokenType.EQUAL)) expression() else null
         consume(TokenType.SEMICOLON, "Expected ';' after value")
-        return Stmt.Var(name, initializer)
+        return Stmt.Var(name, null, initializer)
     }
 
     private fun whileStatement(): Stmt {
@@ -170,7 +170,7 @@ class Parser(
         consume(TokenType.RIGHT_PAREN, "Expected ')' after $kind parameters")
         consume(TokenType.LEFT_BRACE, "Expected '{' to start $kind body")
         val body = block()
-        return Stmt.Function(name, parameters, body)
+        return Stmt.Function(name, null, parameters, body)
     }
 
     private fun block(): List<Stmt> {
@@ -220,10 +220,21 @@ class Parser(
                     }
 
                     val token = Token(binaryOperator, operator.lexeme, null, operator.line)
-                    return Expr.Assign(name, Expr.Binary(Expr.Variable(name), token, value))
+                    return Expr.Assign(
+                        name,
+                        Expr.Binary(
+                            Expr.Variable(
+                                name, null, null
+                            ),
+                            token,
+                            value
+                        ),
+                        null,
+                        null
+                    )
                 }
 
-                return Expr.Assign(name, value)
+                return Expr.Assign(name, value, null, null)
             }
 
             throw error(operator, "Invalid assignment target")
@@ -386,7 +397,7 @@ class Parser(
         if (match(TokenType.TRUE)) return Expr.Literal(true)
         if (match(TokenType.NIL)) return Expr.Literal(Nil.Nil)
         if (match(TokenType.NUMBER, TokenType.STRING)) return Expr.Literal(previous().literal!!) // TODO
-        if (match(TokenType.IDENTIFIER)) return Expr.Variable(previous())
+        if (match(TokenType.IDENTIFIER)) return Expr.Variable(previous(), null, null)
         if (match(TokenType.LEFT_PAREN)) {
             val expression = expression()
             consume(TokenType.RIGHT_PAREN, "Expected ')' after expression")

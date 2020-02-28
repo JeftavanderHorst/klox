@@ -5,9 +5,8 @@ import klox.compiler.LoxCallable
 import klox.compiler.Nil
 
 class Print : LoxCallable {
-    override fun arity(): Int {
-        return 1
-    }
+    override fun arity(): Int = 1
+    override fun toString(): String = "<native fn>"
 
     override fun call(interpreter: Interpreter, arguments: List<Any>): Any {
         when (arguments[0]) {
@@ -15,9 +14,5 @@ class Print : LoxCallable {
             else -> println(arguments[0])
         }
         return Nil.Nil
-    }
-
-    override fun toString(): String {
-        return "<native fn>"
     }
 }

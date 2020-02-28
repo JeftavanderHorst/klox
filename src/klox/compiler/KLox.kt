@@ -34,20 +34,20 @@ class KLox {
             return RunResult.STATIC_ERROR
         }
 
-        val (statements, parseErrors) = Parser(tokens).parse()
+        val (parsedStatements, parseErrors) = Parser(tokens).parse()
         if (parseErrors.isNotEmpty()) {
             errorReporter.display(parseErrors)
             return RunResult.STATIC_ERROR
         }
 
-        val resolveErrors = Resolver(interpreter).resolve(statements)
+        val (resolvedStatements, resolveErrors) = Resolver().resolveRoot(parsedStatements)
         if (resolveErrors.isNotEmpty()) {
             errorReporter.display(resolveErrors)
             return RunResult.STATIC_ERROR
         }
 
-//        AstPrinter().print(statements)
-        interpreter.interpret(statements)
+//        AstPrinter().print(resolvedStatements)
+        interpreter.interpret(resolvedStatements)
 
         return RunResult.SUCCESS
     }

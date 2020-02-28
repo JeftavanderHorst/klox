@@ -18,7 +18,7 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
     }
 
     override fun visitExpressionStmt(stmt: Stmt.Expression): String {
-        return "expr: " + stmt.expression.accept(this)
+        return "(${stmt.expression.accept(this)})"
     }
 
     override fun visitIfStmt(stmt: Stmt.If): String {
@@ -41,13 +41,13 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
     }
 
     override fun visitFunctionStmt(stmt: Stmt.Function): String {
-        return "function ${stmt.name.lexeme}:\n\t" +
+        return "function ${stmt.name.lexeme} (index ${stmt.index}):\n\t" +
                 stmt.params.joinToString { param -> param.lexeme } + "\n\t" +
                 stmt.body.joinToString { param -> param.accept(this) }
     }
 
     override fun visitVarStmt(stmt: Stmt.Var): String {
-        return "var: " + stmt.name + " = " + stmt.initializer?.accept(this)
+        return "decl: " + stmt.name.lexeme + " = " + stmt.initializer?.accept(this) + " (index ${stmt.index})"
     }
 
     override fun visitReturnStmt(stmt: Stmt.Return): String {
@@ -79,11 +79,11 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
     }
 
     override fun visitAssignExpr(expr: Expr.Assign): String {
-        return "assign: " + expr.name + " = " + expr.value.accept(this)
+        return "assign: ${expr.name.lexeme} = ${expr.value.accept(this)} (distance ${expr.distance}, index ${expr.index})"
     }
 
     override fun visitVariableExpr(expr: Expr.Variable): String {
-        return "variable: " + expr.name
+        return "var: ${expr.name.lexeme} (distance ${expr.distance}, index ${expr.index})"
     }
 
     override fun visitLogicalExpr(expr: Expr.Logical): String {
@@ -93,5 +93,9 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
     override fun visitCallExpr(expr: Expr.Call): String {
         return "call: " + expr.callee.accept(this) + " (" +
                 expr.arguments.joinToString { arg -> arg.accept(this) } + ")"
+    }
+
+    override fun visitEmptyExpr(expr: Expr.Empty): String {
+        return "empty"
     }
 }

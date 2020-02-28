@@ -1,23 +1,17 @@
 package klox.compiler
 
-import klox.compiler.std.Clock
-import klox.compiler.std.ReadLine
-import klox.compiler.std.Sleep
-import klox.compiler.std.Print
+import klox.compiler.std.*
 
 class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>, Stmt.Visitor<Unit> {
     private val globals = Environment()
     private var environment = globals
-    private val locals: MutableMap<Expr, Int> = HashMap()
 
     class BreakException : Throwable()
     class ContinueException : Throwable()
 
     init {
-        globals.define("clock", Clock())
-        globals.define("sleep", Sleep())
-        globals.define("readLine", ReadLine())
-        globals.define("print", Print())
+        val std = Std().getNativeFunctions()
+        std.forEach { (index: Int, name: String, fn: LoxCallable) -> globals.define(index, name, fn) }
     }
 
     fun interpret(statements: List<Stmt>) {
@@ -32,10 +26,6 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
 
     private fun execute(statement: Stmt) {
         statement.accept(this)
-    }
-
-    fun resolve(expr: Expr, depth: Int) {
-        locals[expr] = depth
     }
 
     fun executeBlock(statements: List<Stmt>, environment: Environment) {
@@ -56,7 +46,7 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
 
     override fun visitVarStmt(stmt: Stmt.Var) {
         val value = if (stmt.initializer != null) evaluate(stmt.initializer) else Nil.Nil
-        environment.define(stmt.name.lexeme, value)
+        environment.define(stmt.index!!, stmt.name.lexeme, value)
     }
 
     override fun visitIfStmt(stmt: Stmt.If) {
@@ -95,15 +85,11 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
 
     override fun visitFunctionStmt(stmt: Stmt.Function) {
         val function = LoxFunction(stmt, environment)
-        environment.define(stmt.name.lexeme, function)
+        environment.define(stmt.index!!, stmt.name.lexeme, function)
     }
 
     override fun visitReturnStmt(stmt: Stmt.Return) {
-        val value = if (stmt.value != null) {
-            evaluate(stmt.value)
-        } else {
-            Nil.Nil
-        }
+        val value = if (stmt.value != null) evaluate(stmt.value) else Nil.Nil
 
         throw Return(value)
     }
@@ -114,14 +100,7 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
 
     override fun visitAssignExpr(expr: Expr.Assign): Any {
         val value = evaluate(expr.value)
-
-        val distance = locals[expr]
-        if (distance != null) {
-            environment.assignAt(distance, expr.name, value)
-        } else {
-            globals.assign(expr.name, value)
-        }
-
+        environment.assign(expr.distance!!, expr.index!!, expr.name.lexeme, value)
         return value
     }
 
@@ -245,22 +224,12 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
     }
 
     override fun visitVariableExpr(expr: Expr.Variable): Any {
-        return lookUpVariable(expr.name, expr)
-    }
-
-    private fun lookUpVariable(name: Token, expr: Expr): Any {
-        val distance = locals[expr]
-        return if (distance != null) {
-            environment.getAt(distance, name.lexeme)
-        } else {
-            globals.get(name)
-        }
+        return environment.get(expr.distance!!, expr.index!!)
     }
 
     override fun visitCallExpr(expr: Expr.Call): Any {
         val callee = evaluate(expr.callee)
         val arguments = expr.arguments.map { argument -> evaluate(argument) }
-
         if (callee !is LoxCallable) {
             throw RuntimeError(expr.paren.line, "Expression is not a function")
         }
@@ -270,6 +239,10 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
         }
 
         return callee.call(this, arguments)
+    }
+
+    override fun visitEmptyExpr(expr: Expr.Empty): Any {
+        throw RuntimeError(-1, "Encountered empty node - this indicates a compiler bug")
     }
 
     private fun evaluate(expr: Expr): Any {
@@ -296,16 +269,5 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
     private fun checkNumberOperands(operator: Token, left: Any, right: Any) {
         if (left is Double && right is Double) return
         throw RuntimeError(operator.line, "Both operands must be numbers")
-    }
-
-    private fun stringify(obj: Any): String {
-        if (obj is Nil) return "nil"
-
-        val text = obj.toString()
-        if (obj is Double && text.endsWith(".0")) {
-            return text.substring(0, text.length - 2)
-        }
-
-        return text
     }
 }

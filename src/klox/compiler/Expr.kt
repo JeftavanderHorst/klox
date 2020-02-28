@@ -2,9 +2,11 @@ package klox.compiler
 
 /* Auto-generated using tool/generateAST.kt */
 
+@Suppress("RemoveEmptyPrimaryConstructor")
 abstract class Expr {
     interface Visitor<R> {
         fun visitCallExpr(expr: Call): R
+        fun visitEmptyExpr(expr: Empty): R
         fun visitVariableExpr(expr: Variable): R
         fun visitTernaryExpr(expr: Ternary): R
         fun visitLiteralExpr(expr: Literal): R
@@ -25,8 +27,16 @@ abstract class Expr {
         }
     }
 
+    class Empty(
+
+    ) : Expr() {
+        override fun <R> accept(visitor: Visitor<R>): R {
+            return visitor.visitEmptyExpr(this)
+        }
+    }
+
     class Variable(
-        val name: Token
+        val name: Token, val distance: Int?, val index: Int?
     ) : Expr() {
         override fun <R> accept(visitor: Visitor<R>): R {
             return visitor.visitVariableExpr(this)
@@ -58,7 +68,7 @@ abstract class Expr {
     }
 
     class Assign(
-        val name: Token, val value: Expr
+        val name: Token, val value: Expr, val distance: Int?, val index: Int?
     ) : Expr() {
         override fun <R> accept(visitor: Visitor<R>): R {
             return visitor.visitAssignExpr(this)

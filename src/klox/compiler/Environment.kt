@@ -3,44 +3,20 @@ package klox.compiler
 class Environment(
     private val parent: Environment? = null
 ) {
-    private val values = HashMap<String, Any>()
+    private class Value(val name: String, val value: Any)
 
-    fun define(name: String, value: Any) {
-        values[name] = value
+    private val values = HashMap<Int, Value>() // todo this can probably be an array of index -> (name, value)
+
+    fun define(index: Int, name: String, value: Any) {
+        values[index] = Value(name, value)
     }
 
-    fun get(token: Token): Any {
-        if (values.containsKey(token.lexeme)) {
-            return values[token.lexeme]!!
-        }
-
-        if (parent != null) {
-            return parent.get(token)
-        }
-
-        throw RuntimeError(token.line, "Variable '${token.lexeme}' is undefined")
+    fun get(distance: Int, index: Int): Any {
+        return ancestor(distance).values[index]!!.value
     }
 
-    fun assign(token: Token, value: Any) {
-        if (values.containsKey(token.lexeme)) {
-            values[token.lexeme] = value
-            return
-        }
-
-        if (parent != null) {
-            parent.assign(token, value)
-            return
-        }
-
-        throw RuntimeError(token.line, "Cannot assign to variable '${token.lexeme}' because it is not declared")
-    }
-
-    fun getAt(distance: Int, name: String): Any {
-        return ancestor(distance).values[name]!!
-    }
-
-    fun assignAt(distance: Int, name: Token, value: Any) {
-        ancestor(distance).values[name.lexeme] = value
+    fun assign(distance: Int, index: Int, name: String, value: Any) {
+        ancestor(distance).values[index] = Value(name, value)
     }
 
     private fun ancestor(distance: Int): Environment {
@@ -56,17 +32,26 @@ class Environment(
         return this.toString(0)
     }
 
+    // TODO test this after indexes hit
     private fun toString(indent: Int): String {
         // TODO: indicate mutability
         // TODO: indicate shadowed symbols
+        // TODO: don't hide native fn's outside of root scope
 
         val tabs = "\t".repeat(indent)
-        return "\n$tabs" +
-                values.map { (k, v) -> "$k: $v" }.joinToString("\n$tabs") +
-                if (parent != null) {
-                    "\n${tabs}parent:" + parent.toString(indent + 1)
-                } else {
-                    "\n${tabs}no parent"
-                }
+
+        val symbols = values
+            .filter { (_, v) -> v.toString() != "<native fn>" }
+            .map { (k, v) -> "$k: $v" }
+            .joinToString("\n$tabs")
+
+        val parent = if (parent != null) {
+            "parent:" + parent.toString(indent + 1)
+        } else {
+            "no parent"
+        }
+
+        return "\n$tabs$symbols\n" +
+                "$tabs$parent"
     }
 }
