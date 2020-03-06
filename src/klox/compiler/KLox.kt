@@ -40,10 +40,15 @@ class KLox {
             return RunResult.STATIC_ERROR
         }
 
-        val (resolvedStatements, resolveErrors) = Resolver().resolveRoot(parsedStatements)
+        val (resolvedStatements, resolveErrors, resolveWarnings) = Resolver().resolveRoot(parsedStatements)
         if (resolveErrors.isNotEmpty()) {
             errorReporter.display(resolveErrors)
             return RunResult.STATIC_ERROR
+        }
+
+        if (resolveWarnings.isNotEmpty()) {
+            errorReporter.display(resolveWarnings)
+            println()
         }
 
 //        AstPrinter().print(resolvedStatements)

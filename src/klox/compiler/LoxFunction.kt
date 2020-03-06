@@ -19,11 +19,8 @@ class LoxFunction(
         return Nil.Nil
     }
 
-    override fun arity(): Int {
-        return declaration.params.size
-    }
-
-    override fun toString(): String {
-        return "<fn ${declaration.name.lexeme}>"
-    }
+    override fun native() = false
+    override fun purity() = declaration.purity
+    override fun arity() = declaration.params.size
+    override fun toString() = "<fn ${declaration.name.lexeme}>"
 }

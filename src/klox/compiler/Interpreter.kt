@@ -49,6 +49,11 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
         environment.define(stmt.index!!, stmt.name.lexeme, value)
     }
 
+    override fun visitConstStmt(stmt: Stmt.Const) {
+        val value = evaluate(stmt.initializer)
+        environment.define(stmt.index!!, stmt.name.lexeme, value)
+    }
+
     override fun visitIfStmt(stmt: Stmt.If) {
         if (isTruthy(evaluate(stmt.condition))) {
             execute(stmt.thenBranch)
@@ -92,6 +97,13 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
         val value = if (stmt.value != null) evaluate(stmt.value) else Nil.Nil
 
         throw Return(value)
+    }
+
+    override fun visitDebugStmt(stmt: Stmt.Debug) {
+        println("------------------------------")
+        println("INTERPRETER DEBUG ON LINE ${stmt.line}")
+        println(environment)
+        println("------------------------------")
     }
 
     override fun visitEmptyStmt(stmt: Stmt.Empty) {

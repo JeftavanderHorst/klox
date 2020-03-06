@@ -25,7 +25,11 @@ class Scanner(
         "between" to TokenType.BETWEEN,
         "and" to TokenType.BETWEEN_AND,
         "break" to TokenType.BREAK,
-        "continue" to TokenType.CONTINUE
+        "continue" to TokenType.CONTINUE,
+        "const" to TokenType.CONST,
+        "pure" to TokenType.PURE,
+        "debug" to TokenType.DEBUG,
+        "loop" to TokenType.LOOP
     )
 
     fun scanTokens(): Pair<List<Token>, List<ScanError>> {

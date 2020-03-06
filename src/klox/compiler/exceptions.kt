@@ -8,3 +8,5 @@ class ParseError(line: Int, message: String) : CompileError(line, message)
 class ResolveError(line: Int, message: String) : CompileError(line, message)
 
 class RuntimeError(line: Int, message: String) : KLoxError(line, message)
+
+class ResolveWarning(line: Int, message: String) : CompileError(line, message)

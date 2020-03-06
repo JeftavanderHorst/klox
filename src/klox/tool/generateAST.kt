@@ -39,8 +39,10 @@ fun main(args: Array<String>) {
             "Continue" to emptyList(),
             "While" to listOf("condition: Expr", "body: Stmt"),
             "Var" to listOf("name: Token", "index: Int?", "initializer: Expr?"),
-            "Function" to listOf("name: Token", "index: Int?", "params: List<Token>", "body: List<Stmt>"),
+            "Const" to listOf("name: Token", "index: Int?", "initializer: Expr"),
+            "Function" to listOf("name: Token", "index: Int?", "purity: Purity", "params: List<Token>", "body: List<Stmt>"),
             "Return" to listOf("keyword: Token", "value: Expr?"),
+            "Debug" to listOf("line: Int"),
             "Empty" to emptyList()
         )
     )

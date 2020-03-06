@@ -2,10 +2,13 @@ package klox.compiler.std
 
 import klox.compiler.Interpreter
 import klox.compiler.LoxCallable
+import klox.compiler.Purity
 
 class Clock : LoxCallable {
-    override fun arity(): Int = 0
-    override fun toString(): String = "<native fn>"
+    override fun arity() = 0
+    override fun native() = true
+    override fun purity() = Purity.IMPURE
+    override fun toString() = "<native fn>"
 
     override fun call(interpreter: Interpreter, arguments: List<Any>): Any {
         return System.currentTimeMillis().toDouble()

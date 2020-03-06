@@ -41,7 +41,8 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
     }
 
     override fun visitFunctionStmt(stmt: Stmt.Function): String {
-        return "function ${stmt.name.lexeme} (index ${stmt.index}):\n\t" +
+        return (if (stmt.purity == Purity.PURE) "pure " else "") +
+                "function ${stmt.name.lexeme} (index ${stmt.index}):\n\t" +
                 stmt.params.joinToString { param -> param.lexeme } + "\n\t" +
                 stmt.body.joinToString { param -> param.accept(this) }
     }
@@ -50,8 +51,16 @@ class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
         return "decl: " + stmt.name.lexeme + " = " + stmt.initializer?.accept(this) + " (index ${stmt.index})"
     }
 
+    override fun visitConstStmt(stmt: Stmt.Const): String {
+        return "const decl: " + stmt.name.lexeme + " = " + stmt.initializer.accept(this) + " (index ${stmt.index})"
+    }
+
     override fun visitReturnStmt(stmt: Stmt.Return): String {
         return "return: " + stmt.value?.accept(this)
+    }
+
+    override fun visitDebugStmt(stmt: Stmt.Debug): String {
+        return "debug on line ${stmt.line}"
     }
 
     override fun visitEmptyStmt(stmt: Stmt.Empty): String {

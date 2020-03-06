@@ -10,17 +10,19 @@ abstract class Stmt {
         fun visitReturnStmt(stmt: Return): R
         fun visitExpressionStmt(stmt: Expression): R
         fun visitVarStmt(stmt: Var): R
+        fun visitConstStmt(stmt: Const): R
         fun visitBreakStmt(stmt: Break): R
         fun visitBlockStmt(stmt: Block): R
         fun visitWhileStmt(stmt: While): R
         fun visitContinueStmt(stmt: Continue): R
         fun visitIfStmt(stmt: If): R
+        fun visitDebugStmt(stmt: Debug): R
     }
 
     abstract fun <R> accept(visitor: Visitor<R>): R
 
     class Function(
-        val name: Token, val index: Int?, val params: List<Token>, val body: List<Stmt>
+        val name: Token, val index: Int?, val purity: Purity, val params: List<Token>, val body: List<Stmt>
     ) : Stmt() {
         override fun <R> accept(visitor: Visitor<R>): R {
             return visitor.visitFunctionStmt(this)
@@ -56,6 +58,14 @@ abstract class Stmt {
     ) : Stmt() {
         override fun <R> accept(visitor: Visitor<R>): R {
             return visitor.visitVarStmt(this)
+        }
+    }
+
+    class Const(
+        val name: Token, val index: Int?, val initializer: Expr
+    ) : Stmt() {
+        override fun <R> accept(visitor: Visitor<R>): R {
+            return visitor.visitConstStmt(this)
         }
     }
 
@@ -96,6 +106,14 @@ abstract class Stmt {
     ) : Stmt() {
         override fun <R> accept(visitor: Visitor<R>): R {
             return visitor.visitIfStmt(this)
+        }
+    }
+
+    class Debug(
+        val line: Int
+    ) : Stmt() {
+        override fun <R> accept(visitor: Visitor<R>): R {
+            return visitor.visitDebugStmt(this)
         }
     }
 }

@@ -29,29 +29,10 @@ class Environment(
     }
 
     override fun toString(): String {
-        return this.toString(0)
-    }
-
-    // TODO test this after indexes hit
-    private fun toString(indent: Int): String {
         // TODO: indicate mutability
         // TODO: indicate shadowed symbols
-        // TODO: don't hide native fn's outside of root scope
-
-        val tabs = "\t".repeat(indent)
-
-        val symbols = values
-            .filter { (_, v) -> v.toString() != "<native fn>" }
-            .map { (k, v) -> "$k: $v" }
-            .joinToString("\n$tabs")
-
-        val parent = if (parent != null) {
-            "parent:" + parent.toString(indent + 1)
-        } else {
-            "no parent"
-        }
-
-        return "\n$tabs$symbols\n" +
-                "$tabs$parent"
+        val symbols = values.map { (i, v) -> "$i: ${v.name}: ${v.value}" }.joinToString("\n")
+        val parent = if (parent != null) "\n------------------------------\n$parent" else ""
+        return symbols + parent
     }
 }

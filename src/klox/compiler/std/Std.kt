@@ -7,6 +7,7 @@ class Std {
         Triple(0, "clock", Clock()),
         Triple(1, "print", Print()),
         Triple(2, "input", Input()),
-        Triple(3, "sleep", Sleep())
+        Triple(3, "sleep", Sleep()),
+        Triple(4, "substr", Substr())
     )
 }

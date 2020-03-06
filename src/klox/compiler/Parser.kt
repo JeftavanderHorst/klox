@@ -8,6 +8,7 @@ class Parser(
     private val errors: MutableList<ParseError> = ArrayList()
     private var current = 0
     private var loopDepth = 0
+    private var functionDepth = 0
 
     fun parse(): Pair<List<Stmt>, List<ParseError>> {
         val statements: MutableList<Stmt> = ArrayList()
@@ -22,7 +23,12 @@ class Parser(
     private fun declaration(): Stmt {
         try {
             if (match(TokenType.VAR)) return varDeclaration()
-            if (match(TokenType.FUN)) return function("function")
+            if (match(TokenType.CONST)) return constDeclaration()
+            if (match(TokenType.FUN)) return function(Purity.IMPURE)
+            if (match(TokenType.PURE)) {
+                consume(TokenType.FUN, "Expected 'fun' after 'pure'")
+                return function(Purity.PURE)
+            }
             return statement()
         } catch (e: ParseError) {
             synchronize()
@@ -34,9 +40,11 @@ class Parser(
         if (match(TokenType.IF)) return ifStatement()
         if (match(TokenType.WHILE)) return whileStatement()
         if (match(TokenType.FOR)) return forStatement()
+        if (match(TokenType.LOOP)) return loopStatement()
         if (match(TokenType.BREAK)) return breakStatement()
         if (match(TokenType.RETURN)) return returnStatement()
         if (match(TokenType.CONTINUE)) return continueStatement()
+        if (match(TokenType.DEBUG)) return debugStatement()
         if (match(TokenType.LEFT_BRACE)) return Stmt.Block(block())
         return expressionStatement()
     }
@@ -57,6 +65,10 @@ class Parser(
     }
 
     private fun returnStatement(): Stmt {
+        if (functionDepth <= 0) {
+            throw error(previous(), "Must be inside a function to use 'return'")
+        }
+
         val keyword = previous()
         val value = if (!check(TokenType.SEMICOLON)) {
             expression()
@@ -87,11 +99,24 @@ class Parser(
         return Stmt.Continue()
     }
 
+    private fun debugStatement(): Stmt {
+        consume(TokenType.SEMICOLON, "Expected ';' after 'debug'")
+        return Stmt.Debug(previous().line)
+    }
+
     private fun varDeclaration(): Stmt {
         val name = consume(TokenType.IDENTIFIER, "Expected variable name")
         val initializer = if (match(TokenType.EQUAL)) expression() else null
-        consume(TokenType.SEMICOLON, "Expected ';' after value")
+        consume(TokenType.SEMICOLON, "Expected ';' after initializer")
         return Stmt.Var(name, null, initializer)
+    }
+
+    private fun constDeclaration(): Stmt {
+        val name = consume(TokenType.IDENTIFIER, "Expected const name")
+        consume(TokenType.EQUAL, "Const must have an initializer")
+        val initializer = expression()
+        consume(TokenType.SEMICOLON, "Expected ';' after initializer")
+        return Stmt.Const(name, null, initializer)
     }
 
     private fun whileStatement(): Stmt {
@@ -114,6 +139,7 @@ class Parser(
         val initializer = when {
             match(TokenType.SEMICOLON) -> Stmt.Empty()
             match(TokenType.VAR) -> varDeclaration()
+            match(TokenType.CONST) -> throw error(previous(), "Cannot use 'const' inside a for loop declaration")
             else -> expressionStatement()
         }
 
@@ -151,15 +177,24 @@ class Parser(
         }
     }
 
+    private fun loopStatement(): Stmt {
+        try {
+            loopDepth += 1
+            return Stmt.While(Expr.Literal(true), statement())
+        } finally {
+            loopDepth -= 1
+        }
+    }
+
     private fun expressionStatement(): Stmt {
         val value = expression()
         consume(TokenType.SEMICOLON, "Expected ';' after value")
         return Stmt.Expression(value)
     }
 
-    private fun function(kind: String): Stmt.Function {
-        val name = consume(TokenType.IDENTIFIER, "Expected $kind name")
-        consume(TokenType.LEFT_PAREN, "Expected '(' after $kind name")
+    private fun function(pure: Purity): Stmt.Function {
+        val name = consume(TokenType.IDENTIFIER, "Expected function name")
+        consume(TokenType.LEFT_PAREN, "Expected '(' after function name")
         val parameters: MutableList<Token> = ArrayList()
         if (!check(TokenType.RIGHT_PAREN)) {
             do {
@@ -167,10 +202,16 @@ class Parser(
             } while (match(TokenType.COMMA))
         }
 
-        consume(TokenType.RIGHT_PAREN, "Expected ')' after $kind parameters")
-        consume(TokenType.LEFT_BRACE, "Expected '{' to start $kind body")
-        val body = block()
-        return Stmt.Function(name, null, parameters, body)
+        consume(TokenType.RIGHT_PAREN, "Expected ')' after function parameters")
+        consume(TokenType.LEFT_BRACE, "Expected '{' to start function body")
+
+        try {
+            functionDepth += 1
+            val body = block()
+            return Stmt.Function(name, null, pure, parameters, body)
+        } finally {
+            functionDepth -= 1
+        }
     }
 
     private fun block(): List<Stmt> {
@@ -223,7 +264,7 @@ class Parser(
                     return Expr.Assign(
                         name,
                         Expr.Binary(
-                            Expr.Variable(
+                            Expr.Variable( // TODO how does this mix with consts?
                                 name, null, null
                             ),
                             token,
@@ -460,21 +501,28 @@ class Parser(
                 return
             }
 
+            // TODO: don't match for FUN if PURE was matched?
             val next = peek().type
             if (next == TokenType.CLASS
+                || next == TokenType.PURE
                 || next == TokenType.FUN
                 || next == TokenType.VAR
-                || next == TokenType.FOR
+                || next == TokenType.CONST
                 || next == TokenType.IF
+                || next == TokenType.FOR
+                || next == TokenType.LOOP
                 || next == TokenType.WHILE
                 || next == TokenType.RETURN
                 || next == TokenType.BREAK
                 || next == TokenType.CONTINUE
+                || next == TokenType.DEBUG
             ) {
                 return
             }
 
             advance()
         }
+
+        // TODO: when an error occurs in a for loop initializer, we should skip it entirely
     }
 }
