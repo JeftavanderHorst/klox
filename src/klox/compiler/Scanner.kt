@@ -27,9 +27,11 @@ class Scanner(
         "break" to TokenType.BREAK,
         "continue" to TokenType.CONTINUE,
         "const" to TokenType.CONST,
-        "pure" to TokenType.PURE,
         "debug" to TokenType.DEBUG,
-        "loop" to TokenType.LOOP
+        "loop" to TokenType.LOOP,
+        "number" to TokenType.T_NUMBER,
+        "bool" to TokenType.T_BOOL,
+        "string" to TokenType.T_STRING
     )
 
     fun scanTokens(): Pair<List<Token>, List<ScanError>> {
@@ -184,7 +186,7 @@ class Scanner(
 
         val text = source.substring(start, current)
         val type = keywords[text] ?: TokenType.IDENTIFIER
-        addToken(type)
+        addToken(type, text)
     }
 
     private fun isAtEnd(): Boolean {

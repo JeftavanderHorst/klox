@@ -34,26 +34,54 @@ class KLox {
             return RunResult.STATIC_ERROR
         }
 
-        val (parsedStatements, parseErrors) = Parser(tokens).parse()
+        var (statements, parseErrors) = Parser(tokens).parse()
         if (parseErrors.isNotEmpty()) {
             errorReporter.display(parseErrors)
             return RunResult.STATIC_ERROR
         }
 
-        val (resolvedStatements, resolveErrors, resolveWarnings) = Resolver().resolveRoot(parsedStatements)
-        if (resolveErrors.isNotEmpty()) {
-            errorReporter.display(resolveErrors)
-            return RunResult.STATIC_ERROR
+        val passes: List<Pass> = listOf(Resolver(), Typer())
+        for (pass in passes) {
+            val (result, errors, warnings) = pass.pass(statements)
+
+            if (errors.isNotEmpty()) {
+                errorReporter.display(errors)
+                return RunResult.STATIC_ERROR
+            }
+
+//            errorReporter.display(warnings)
+
+            statements = result
         }
 
-        if (resolveWarnings.isNotEmpty()) {
-            errorReporter.display(resolveWarnings)
-            println()
-        }
+        println("AST:")
+        AstPrinter().print(statements)
 
-//        AstPrinter().print(resolvedStatements)
-        interpreter.interpret(resolvedStatements)
+        println()
+        println("Result:")
+        interpreter.interpret(statements)
 
         return RunResult.SUCCESS
     }
 }
+
+/* TODO:
+ - fun/proc
+ - anonymous fun
+ - multiple statements in for loop declarations?
+ - runtime error when accessing unassigned variables
+ - trailing commas
+ - lazier evaluation
+ - expressions in repl
+ - correct indentation in astprinter
+ - dead code warnings
+ - pipeline operator
+ */
+
+/*
+ - language: 2/5
+ - compiler quality: 3/5
+ - error reporting: 3/5
+ - documentation: 1/5
+ - tests: 1/5
+ */

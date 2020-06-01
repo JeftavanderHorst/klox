@@ -21,29 +21,27 @@ data class Variable(
     val name: Token,
     val index: Int,
     val type: VariableType,
-    val purity: Purity,
     var defined: Boolean,
     var timesAssigned: Int = 0,
     var timesAccessed: Int = 0
 )
 
-data class Scope(
-    val symbols: MutableMap<String, Variable>,
-    val purity: Purity
-)
+data class Scope(val symbols: MutableMap<String, Variable>)
 
-class Resolver : Stmt.Visitor<Stmt>, Expr.Visitor<Expr> {
+class Resolver : Pass, Stmt.Visitor<Stmt>, Expr.Visitor<Expr> {
     private val scopes = Stack<Scope>()
     private val errors = ArrayList<ResolveError>()
-    private val warnings = ArrayList<ResolveWarning>()
+    private val warnings = ArrayList<Warning>()
+    private var nextIndex = 0
 
-    fun resolveRoot(statements: List<Stmt>): Triple<List<Stmt>, List<ResolveError>, List<ResolveWarning>> {
+    override fun pass(statements: List<Stmt>): Triple<List<Stmt>, List<ResolveError>, List<Warning>> {
         beginScope()
 
         val std = Std().getNativeFunctions()
-        std.forEach { (index: Int, name: String, fn: LoxCallable) ->
+        std.forEach { (index: Int, name: String, _: LoxCallable) ->
             scopes.peek().symbols[name] =
-                Variable(Token(TokenType.IDENTIFIER, name, null, -1), index, VariableType.NATIVE, fn.purity(), true)
+                Variable(Token(TokenType.IDENTIFIER, name, null, -1), index, VariableType.NATIVE, true)
+            nextIndex += 1
         }
 
         val result = resolve(statements)
@@ -66,17 +64,13 @@ class Resolver : Stmt.Visitor<Stmt>, Expr.Visitor<Expr> {
     }
 
     override fun visitFunctionStmt(stmt: Stmt.Function): Stmt {
-        val index = declare(stmt.name, VariableType.FUN, stmt.purity)
+        val index = declare(stmt.name, VariableType.FUN)
         define(stmt.name)
 
-        beginScope(stmt.purity)
+        beginScope()
 
         for (param in stmt.params) {
-            declare(
-                param,
-                VariableType.PARAMETER,
-                stmt.purity
-            ) // todo: this would allow users to access parameters from pure parents
+            declare(param, VariableType.PARAMETER)
             define(param)
         }
 
@@ -84,7 +78,7 @@ class Resolver : Stmt.Visitor<Stmt>, Expr.Visitor<Expr> {
 
         endScope()
 
-        return Stmt.Function(stmt.name, index, stmt.purity, stmt.params, body)
+        return Stmt.Function(stmt.name, index, stmt.params, body)
     }
 
     override fun visitEmptyStmt(stmt: Stmt.Empty): Stmt {
@@ -92,11 +86,7 @@ class Resolver : Stmt.Visitor<Stmt>, Expr.Visitor<Expr> {
     }
 
     override fun visitReturnStmt(stmt: Stmt.Return): Stmt {
-        if (stmt.value != null) {
-            return Stmt.Return(stmt.keyword, resolve(stmt.value))
-        }
-
-        return stmt
+        return Stmt.Return(stmt.keyword, resolve(stmt.value))
     }
 
     override fun visitExpressionStmt(stmt: Stmt.Expression): Stmt {
@@ -104,17 +94,17 @@ class Resolver : Stmt.Visitor<Stmt>, Expr.Visitor<Expr> {
     }
 
     override fun visitVarStmt(stmt: Stmt.Var): Stmt {
-        val index = declare(stmt.name, VariableType.VAR, Purity.IMPURE)
+        val index = declare(stmt.name, VariableType.VAR)
         val initializer = if (stmt.initializer != null) resolve(stmt.initializer) else null
         define(stmt.name)
         return Stmt.Var(stmt.name, index, initializer)
     }
 
     override fun visitConstStmt(stmt: Stmt.Const): Stmt {
-        val index = declare(stmt.name, VariableType.CONST, Purity.PURE)
+        val index = declare(stmt.name, VariableType.CONST)
         val initializer = resolve(stmt.initializer)
         define(stmt.name)
-        return Stmt.Var(stmt.name, index, initializer)
+        return Stmt.Const(stmt.name, index, initializer)
     }
 
     override fun visitBreakStmt(stmt: Stmt.Break): Stmt {
@@ -160,7 +150,7 @@ class Resolver : Stmt.Visitor<Stmt>, Expr.Visitor<Expr> {
                 scope.symbols
                     .toList()
                     .sortedBy { (_, b) -> b.index }
-                    .joinToString { (name, value) -> "$name=${value.index}" } + " ${scope.purity}"
+                    .joinToString { (name, value) -> "$name=${value.index}" }
             )
         }
 
@@ -183,16 +173,6 @@ class Resolver : Stmt.Visitor<Stmt>, Expr.Visitor<Expr> {
 
         for (i in (scopes.size - 1) downTo 0) {
             if (scopes[i].symbols.contains(expr.name.lexeme)) {
-                if (scopes.peek().purity == Purity.PURE && scopes[i].symbols[expr.name.lexeme]!!.purity != Purity.PURE) {
-                    val message = when (scopes[i].symbols[expr.name.lexeme]!!.type) {
-                        VariableType.VAR, VariableType.PARAMETER -> "Cannot read impure variable '${expr.name.lexeme}' from pure context"
-                        VariableType.FUN, VariableType.NATIVE -> "Cannot call impure function '${expr.name.lexeme}' from pure context"
-                        else -> throw Exception("This should never happen")
-                    }
-
-                    error(expr.name, message)
-                }
-
                 scopes[i].symbols[expr.name.lexeme]!!.timesAccessed += 1
                 return Expr.Variable(expr.name, scopes.size - i - 1, scopes[i].symbols[expr.name.lexeme]!!.index)
             }
@@ -262,16 +242,8 @@ class Resolver : Stmt.Visitor<Stmt>, Expr.Visitor<Expr> {
         return Expr.Empty()
     }
 
-    private fun beginScope(purity: Purity = Purity.IMPURE) {
-        var purity2 = purity
-        for (i in (scopes.size - 1) downTo 0) {
-            if (scopes[i].purity == Purity.PURE) {
-                purity2 = Purity.PURE
-                break;
-            }
-        }
-
-        scopes.add(Scope(HashMap(), purity2))
+    private fun beginScope() {
+        scopes.add(Scope(HashMap()))
     }
 
     private fun endScope() {
@@ -297,15 +269,16 @@ class Resolver : Stmt.Visitor<Stmt>, Expr.Visitor<Expr> {
         scopes.pop()
     }
 
-    private fun declare(name: Token, type: VariableType, purity: Purity): Int {
+    private fun declare(name: Token, type: VariableType): Int {
         val scope = scopes.peek().symbols
 
         if (scope.containsKey(name.lexeme)) {
             error(name, "Variable named '${name.lexeme}' is already declared in this scope")
         }
 
-        val index = nextIndex()
-        scope[name.lexeme] = Variable(name, index, type, purity, false)
+        val index = nextIndex
+        nextIndex += 1
+        scope[name.lexeme] = Variable(name, index, type, false)
         return index
     }
 
@@ -313,15 +286,11 @@ class Resolver : Stmt.Visitor<Stmt>, Expr.Visitor<Expr> {
         scopes.peek().symbols[name.lexeme]?.defined = true
     }
 
-    private fun nextIndex(): Int {
-        return scopes.peek().symbols.maxBy { (_, v) -> v.index }?.component2()?.index?.plus(1) ?: 0
-    }
-
     private fun error(token: Token, message: String) {
         errors.add(ResolveError(token.line, message))
     }
 
     private fun warning(token: Token, message: String) {
-        warnings.add(ResolveWarning(token.line, message))
+        warnings.add(Warning(token.line, message))
     }
 }

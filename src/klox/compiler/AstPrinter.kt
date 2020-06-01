@@ -2,109 +2,116 @@ package klox.compiler
 
 // TODO: Correctly display whitespace in blocks
 
-class AstPrinter : Stmt.Visitor<String>, Expr.Visitor<String> {
+class AstPrinter {
+    val ANSI_RESET = "\u001B[0m"
+    val ANSI_BLACK = "\u001B[30m"
+    val ANSI_RED = "\u001B[31m"
+    val ANSI_GREEN = "\u001B[32m"
+    val ANSI_YELLOW = "\u001B[33m"
+    val ANSI_BLUE = "\u001B[34m"
+    val ANSI_PURPLE = "\u001B[35m"
+    val ANSI_CYAN = "\u001B[36m"
+    val ANSI_WHITE = "\u001B[37m"
+
+    private fun red(string: String) = "$ANSI_RED$string$ANSI_RESET"
+    private fun yellow(string: String) = "$ANSI_YELLOW$string$ANSI_RESET"
+    private fun cyan(string: String) = "$ANSI_CYAN$string$ANSI_RESET"
+
     fun print(statements: List<Stmt>) {
         for (stmt in statements) {
-            println(stmt.accept(this))
+            println(makeString(stmt))
         }
     }
 
-    private fun parenthesize(name: String, vararg expressions: Expr): String {
-        return "($name, " + expressions.joinToString { expression -> " " + expression.accept(this) } + ")"
+    private fun parenthesize(strings: List<String>) = "(${strings.joinToString(" ")})"
+    private fun parenthesize(vararg strings: String) = "(${strings.joinToString(" ")})"
+
+    fun makeString(stmt: Stmt): String = when (stmt) {
+        is Stmt.Expression -> parenthesize(listOf(makeString(stmt.expression)))
+        is Stmt.Block -> parenthesize(stmt.statements.map { s -> makeString(s) })
+        is Stmt.Var -> {
+            val name = cyan("${stmt.name.lexeme}_${stmt.index}")
+            if (stmt.initializer != null) {
+                parenthesize("var", name, makeString(stmt.initializer), type(stmt.type))
+            } else {
+                parenthesize("var", name, yellow("null"), type(stmt.type))
+            }
+        }
+        is Stmt.Const -> parenthesize(
+            "const",
+            cyan("${stmt.name.lexeme}_${stmt.index}"),
+            makeString(stmt.initializer),
+            type(stmt.type)
+        )
+        is Stmt.Function -> parenthesize(
+            "fun",
+            cyan("${stmt.name.lexeme}_${stmt.index}"),
+            parenthesize(stmt.body.map { s -> makeString(s) }),
+            type(stmt.type)
+        )
+        is Stmt.Return -> parenthesize("return", makeString(stmt.value))
+        is Stmt.If -> parenthesize(
+            "if",
+            makeString(stmt.condition),
+            makeString(stmt.thenBranch),
+            makeString(stmt.elseBranch)
+        )
+        is Stmt.While -> parenthesize(
+            "while",
+            makeString(stmt.condition),
+            makeString(stmt.body)
+        )
+        is Stmt.Continue -> parenthesize("continue")
+        is Stmt.Break -> parenthesize("break")
+        is Stmt.Debug -> parenthesize("debug")
+        is Stmt.Empty -> parenthesize("empty")
     }
 
-    override fun visitBlockStmt(stmt: Stmt.Block): String {
-        return "block: " + stmt.statements.joinToString { statement -> statement.accept(this) }
-    }
+    private fun type(type: Type?): String = red(type?.toString() ?: "???")
 
-    override fun visitExpressionStmt(stmt: Stmt.Expression): String {
-        return "(${stmt.expression.accept(this)})"
-    }
-
-    override fun visitIfStmt(stmt: Stmt.If): String {
-        return "if:\n\t${stmt.condition.accept(this)}" +
-                "\n\t[ ${stmt.thenBranch.accept(this)} ]" +
-                "\n\t[ ${stmt.elseBranch.accept(this)} ]"
-    }
-
-    override fun visitWhileStmt(stmt: Stmt.While): String {
-        return "while:\n\t${stmt.condition.accept(this)}" +
-                "\n\t[ ${stmt.body.accept(this)} ]"
-    }
-
-    override fun visitBreakStmt(stmt: Stmt.Break): String {
-        return "break"
-    }
-
-    override fun visitContinueStmt(stmt: Stmt.Continue): String {
-        return "continue"
-    }
-
-    override fun visitFunctionStmt(stmt: Stmt.Function): String {
-        return (if (stmt.purity == Purity.PURE) "pure " else "") +
-                "function ${stmt.name.lexeme} (index ${stmt.index}):\n\t" +
-                stmt.params.joinToString { param -> param.lexeme } + "\n\t" +
-                stmt.body.joinToString { param -> param.accept(this) }
-    }
-
-    override fun visitVarStmt(stmt: Stmt.Var): String {
-        return "decl: " + stmt.name.lexeme + " = " + stmt.initializer?.accept(this) + " (index ${stmt.index})"
-    }
-
-    override fun visitConstStmt(stmt: Stmt.Const): String {
-        return "const decl: " + stmt.name.lexeme + " = " + stmt.initializer.accept(this) + " (index ${stmt.index})"
-    }
-
-    override fun visitReturnStmt(stmt: Stmt.Return): String {
-        return "return: " + stmt.value?.accept(this)
-    }
-
-    override fun visitDebugStmt(stmt: Stmt.Debug): String {
-        return "debug on line ${stmt.line}"
-    }
-
-    override fun visitEmptyStmt(stmt: Stmt.Empty): String {
-        return "empty"
-    }
-
-    override fun visitGroupingExpr(expr: Expr.Grouping): String {
-        return parenthesize("group", expr.expr)
-    }
-
-    override fun visitBinaryExpr(expr: Expr.Binary): String {
-        return parenthesize(expr.operator.lexeme, expr.left, expr.right)
-    }
-
-    override fun visitTernaryExpr(expr: Expr.Ternary): String {
-        return parenthesize("${expr.operator1.lexeme} ${expr.operator2.lexeme}", expr.left, expr.middle, expr.right)
-    }
-
-    override fun visitUnaryExpr(expr: Expr.Unary): String {
-        return parenthesize(expr.operator.lexeme, expr.right)
-    }
-
-    override fun visitLiteralExpr(expr: Expr.Literal): String {
-        return expr.value.toString()
-    }
-
-    override fun visitAssignExpr(expr: Expr.Assign): String {
-        return "assign: ${expr.name.lexeme} = ${expr.value.accept(this)} (distance ${expr.distance}, index ${expr.index})"
-    }
-
-    override fun visitVariableExpr(expr: Expr.Variable): String {
-        return "var: ${expr.name.lexeme} (distance ${expr.distance}, index ${expr.index})"
-    }
-
-    override fun visitLogicalExpr(expr: Expr.Logical): String {
-        return parenthesize(expr.operator.lexeme, expr.left, expr.right)
-    }
-
-    override fun visitCallExpr(expr: Expr.Call): String {
-        return "call: " + expr.callee.accept(this) + " (" +
-                expr.arguments.joinToString { arg -> arg.accept(this) } + ")"
-    }
-
-    override fun visitEmptyExpr(expr: Expr.Empty): String {
-        return "empty"
+    fun makeString(expr: Expr): String = when (expr) {
+        is Expr.Call -> parenthesize(
+            "call",
+            makeString(expr.callee),
+            parenthesize(expr.arguments.map { e -> makeString(e) }),
+            type(expr.type)
+        )
+        is Expr.Variable -> parenthesize(
+            cyan("${expr.name.lexeme}_${expr.index}"),
+            type(expr.type)
+        )
+        is Expr.Literal -> parenthesize(yellow(expr.value.toString()), type(expr.type))
+        is Expr.Assign -> parenthesize(
+            "assign",
+            cyan("${expr.name.lexeme}_${expr.index}"),
+            makeString(expr.value),
+            type(expr.type)
+        )
+        is Expr.Grouping -> parenthesize(makeString(expr.expr))
+        is Expr.Unary -> parenthesize(
+            expr.operator.lexeme,
+            makeString(expr.right),
+            type(expr.type)
+        )
+        is Expr.Binary -> parenthesize(
+            expr.operator.lexeme,
+            makeString(expr.left),
+            makeString(expr.right),
+            type(expr.type)
+        )
+        is Expr.Ternary -> parenthesize(
+            "${expr.operator1.lexeme}-${expr.operator2.lexeme}",
+            makeString(expr.left),
+            makeString(expr.middle),
+            makeString(expr.right),
+            type(expr.type)
+        )
+        is Expr.Logical -> parenthesize(
+            expr.operator.lexeme,
+            makeString(expr.left),
+            makeString(expr.right),
+            type(expr.type)
+        )
+        is Expr.Empty -> "empty"
     }
 }

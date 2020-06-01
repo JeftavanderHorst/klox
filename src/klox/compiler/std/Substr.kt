@@ -6,8 +6,9 @@ import kotlin.math.roundToInt
 class Substr : LoxCallable {
     override fun arity() = 3
     override fun native() = true
-    override fun purity() = Purity.PURE
     override fun toString() = "<native fn>"
+    override fun type() =
+        Type.FunType(listOf(Type.StringType(), Type.NumberType(), Type.NumberType()), Type.StringType())
 
     override fun call(interpreter: Interpreter, arguments: List<Any>): Any {
         val string = arguments[0]

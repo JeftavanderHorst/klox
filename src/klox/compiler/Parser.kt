@@ -24,11 +24,7 @@ class Parser(
         try {
             if (match(TokenType.VAR)) return varDeclaration()
             if (match(TokenType.CONST)) return constDeclaration()
-            if (match(TokenType.FUN)) return function(Purity.IMPURE)
-            if (match(TokenType.PURE)) {
-                consume(TokenType.FUN, "Expected 'fun' after 'pure'")
-                return function(Purity.PURE)
-            }
+            if (match(TokenType.FUN)) return function()
             return statement()
         } catch (e: ParseError) {
             synchronize()
@@ -73,7 +69,7 @@ class Parser(
         val value = if (!check(TokenType.SEMICOLON)) {
             expression()
         } else {
-            null
+            Expr.Literal(Nil.Nil)
         }
 
         consume(TokenType.SEMICOLON, "Expected ';' after return")
@@ -107,6 +103,7 @@ class Parser(
     private fun varDeclaration(): Stmt {
         val name = consume(TokenType.IDENTIFIER, "Expected variable name")
         val initializer = if (match(TokenType.EQUAL)) expression() else null
+        // todo initializer may not be present, alter error description
         consume(TokenType.SEMICOLON, "Expected ';' after initializer")
         return Stmt.Var(name, null, initializer)
     }
@@ -192,7 +189,7 @@ class Parser(
         return Stmt.Expression(value)
     }
 
-    private fun function(pure: Purity): Stmt.Function {
+    private fun function(): Stmt.Function {
         val name = consume(TokenType.IDENTIFIER, "Expected function name")
         consume(TokenType.LEFT_PAREN, "Expected '(' after function name")
         val parameters: MutableList<Token> = ArrayList()
@@ -208,7 +205,7 @@ class Parser(
         try {
             functionDepth += 1
             val body = block()
-            return Stmt.Function(name, null, pure, parameters, body)
+            return Stmt.Function(name, null, parameters, body)
         } finally {
             functionDepth -= 1
         }
@@ -260,22 +257,30 @@ class Parser(
                         }
                     }
 
-                    val token = Token(binaryOperator, operator.lexeme, null, operator.line)
+                    val lexeme = when (operator.type) {
+                        TokenType.PLUS_EQUAL -> "+"
+                        TokenType.MINUS_EQUAL -> "-"
+                        TokenType.STAR_EQUAL -> "*"
+                        TokenType.SLASH_EQUAL -> "/"
+                        TokenType.MODULO_EQUAL -> "%"
+                        TokenType.COALESCE_EQUAL -> "??"
+                        else -> {
+                            throw error(operator, "Fatal error")
+                        }
+                    }
+
+                    val token = Token(binaryOperator, lexeme, null, operator.line)
                     return Expr.Assign(
                         name,
                         Expr.Binary(
-                            Expr.Variable( // TODO how does this mix with consts?
-                                name, null, null
-                            ),
+                            Expr.Variable(name), // TODO how does this mix with consts?
                             token,
                             value
-                        ),
-                        null,
-                        null
+                        )
                     )
                 }
 
-                return Expr.Assign(name, value, null, null)
+                return Expr.Assign(name, value)
             }
 
             throw error(operator, "Invalid assignment target")
@@ -438,7 +443,7 @@ class Parser(
         if (match(TokenType.TRUE)) return Expr.Literal(true)
         if (match(TokenType.NIL)) return Expr.Literal(Nil.Nil)
         if (match(TokenType.NUMBER, TokenType.STRING)) return Expr.Literal(previous().literal!!) // TODO
-        if (match(TokenType.IDENTIFIER)) return Expr.Variable(previous(), null, null)
+        if (match(TokenType.IDENTIFIER)) return Expr.Variable(previous())
         if (match(TokenType.LEFT_PAREN)) {
             val expression = expression()
             consume(TokenType.RIGHT_PAREN, "Expected ')' after expression")
@@ -501,10 +506,8 @@ class Parser(
                 return
             }
 
-            // TODO: don't match for FUN if PURE was matched?
             val next = peek().type
             if (next == TokenType.CLASS
-                || next == TokenType.PURE
                 || next == TokenType.FUN
                 || next == TokenType.VAR
                 || next == TokenType.CONST

@@ -20,7 +20,7 @@ class LoxFunction(
     }
 
     override fun native() = false
-    override fun purity() = declaration.purity
     override fun arity() = declaration.params.size
     override fun toString() = "<fn ${declaration.name.lexeme}>"
+    override fun type() = TODO()
 }

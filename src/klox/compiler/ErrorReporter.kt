@@ -9,7 +9,8 @@ class ErrorReporter(private val writer: PrintStream) {
             is ParseError -> "Parse Error"
             is RuntimeError -> "Runtime Error"
             is ResolveError -> "Resolve Error"
-            is ResolveWarning -> "Warning"
+            is TypeError -> "Type Error"
+            is Warning -> "Warning"
             else -> "Error"
         }
 

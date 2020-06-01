@@ -16,7 +16,10 @@ enum class TokenType {
 
     // Keywords
     CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, RETURN, SUPER, THIS, TRUE, VAR, WHILE, BREAK, CONTINUE, BETWEEN, BETWEEN_AND,
-    PURE, CONST, LOOP, DEBUG,
+    CONST, LOOP, DEBUG,
+
+    // Type names
+    T_NUMBER, T_BOOL, T_STRING,
 
     EOF
 }

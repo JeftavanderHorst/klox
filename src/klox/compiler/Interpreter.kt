@@ -1,6 +1,6 @@
 package klox.compiler
 
-import klox.compiler.std.*
+import klox.compiler.std.Std
 
 class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>, Stmt.Visitor<Unit> {
     private val globals = Environment()
@@ -94,9 +94,7 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
     }
 
     override fun visitReturnStmt(stmt: Stmt.Return) {
-        val value = if (stmt.value != null) evaluate(stmt.value) else Nil.Nil
-
-        throw Return(value)
+        throw Return(evaluate(stmt.value))
     }
 
     override fun visitDebugStmt(stmt: Stmt.Debug) {
@@ -125,59 +123,19 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
         val right = evaluate(expr.right)
 
         return when (expr.operator.type) {
-            TokenType.MINUS -> {
-                checkNumberOperands(expr.operator, left, right)
-                (left as Double) - (right as Double)
-            }
-            TokenType.SLASH -> {
-                checkNumberOperands(expr.operator, left, right)
-                (left as Double) / (right as Double)
-            }
-            TokenType.STAR -> {
-                checkNumberOperands(expr.operator, left, right)
-                (left as Double) * (right as Double)
-            }
-            TokenType.MODULO -> {
-                checkNumberOperands(expr.operator, left, right)
-                (left as Double) % (right as Double)
-            }
-            TokenType.PLUS -> {
-                if ((left !is Double && left !is String) || (right !is Double && right !is String)) {
-                    throw RuntimeError(expr.operator.line, "Cannot perform addition on values of this type")
-                } else if (left is Double && right is Double) {
-                    left + right
-                } else if (left is String && right is String) {
-                    left + right
-                } else {
-                    throw RuntimeError(expr.operator.line, "Cannot add values of different types")
-                }
-            }
-            TokenType.GREATER -> {
-                checkNumberOperands(expr.operator, left, right)
-                (left as Double) > (right as Double)
-            }
-            TokenType.GREATER_EQUAL -> {
-                checkNumberOperands(expr.operator, left, right)
-                (left as Double) >= (right as Double)
-            }
-            TokenType.LESS -> {
-                checkNumberOperands(expr.operator, left, right)
-                (left as Double) < (right as Double)
-            }
-            TokenType.LESS_EQUAL -> {
-                checkNumberOperands(expr.operator, left, right)
-                (left as Double <= right as Double)
-            }
-            TokenType.BANG_EQUAL -> !isEqual(left, right)
+            TokenType.PLUS -> (left as Double) + (right as Double)
+            TokenType.MINUS -> (left as Double) - (right as Double)
+            TokenType.SLASH -> (left as Double) / (right as Double)
+            TokenType.STAR -> (left as Double) * (right as Double)
+            TokenType.MODULO -> (left as Double) % (right as Double)
+            TokenType.GREATER -> (left as Double) > (right as Double)
+            TokenType.GREATER_EQUAL -> (left as Double) >= (right as Double)
+            TokenType.LESS -> (left as Double) < (right as Double)
+            TokenType.LESS_EQUAL -> (left as Double <= right as Double)
             TokenType.EQUAL_EQUAL -> isEqual(left, right)
-            TokenType.COALESCE -> {
-                if (left != Nil.Nil) {
-                    left
-                } else {
-                    right
-                }
-            }
-            else -> throw Exception("Should be unreachable")
+            TokenType.BANG_EQUAL -> !isEqual(left, right)
+            TokenType.COALESCE -> if (left != Nil.Nil) left else right
+            else -> throw unreachable()
         }
     }
 
@@ -195,24 +153,26 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
             val middle = evaluate(expr.middle)
             val right = evaluate(expr.right)
             if (left !is Double || middle !is Double || right !is Double) {
-                throw RuntimeError(expr.operator1.line, "All arguments to 'between' operator must be numbers")
+                throw unreachable()
             }
 
             return (left >= middle && left <= right) || (left >= right && left <= middle)
         }
 
-        throw Exception("Should be unreachable")
+        throw unreachable()
     }
 
     override fun visitLogicalExpr(expr: Expr.Logical): Any {
         val left = evaluate(expr.left)
+
+        // TODO this looks wrong
 
         if (expr.operator.type == TokenType.OR) {
             if (isTruthy(left)) return left
         } else if (expr.operator.type == TokenType.OR) {
             if (!isTruthy(left)) return left
         } else {
-            throw Exception("Should be unreachable")
+            throw unreachable()
         }
 
         return evaluate(expr.right)
@@ -222,12 +182,9 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
         val right = evaluate(expr.right)
 
         return when (expr.operator.type) {
-            TokenType.MINUS -> {
-                checkNumberOperand(expr.operator, right)
-                -(right as Double)
-            }
+            TokenType.MINUS -> -(right as Double)
             TokenType.BANG -> !isTruthy(right)
-            else -> throw Exception("Should be unreachable")
+            else -> throw unreachable()
         }
     }
 
@@ -243,18 +200,14 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
         val callee = evaluate(expr.callee)
         val arguments = expr.arguments.map { argument -> evaluate(argument) }
         if (callee !is LoxCallable) {
-            throw RuntimeError(expr.paren.line, "Expression is not a function")
-        }
-
-        if (arguments.size != callee.arity()) {
-            throw RuntimeError(expr.paren.line, "Expected ${callee.arity()} arguments but received ${arguments.size}")
+            throw unreachable()
         }
 
         return callee.call(this, arguments)
     }
 
     override fun visitEmptyExpr(expr: Expr.Empty): Any {
-        throw RuntimeError(-1, "Encountered empty node - this indicates a compiler bug")
+        throw unreachable()
     }
 
     private fun evaluate(expr: Expr): Any {
@@ -273,13 +226,7 @@ class Interpreter(private val errorReporter: ErrorReporter) : Expr.Visitor<Any>,
         return a == b
     }
 
-    private fun checkNumberOperand(operator: Token, operand: Any) {
-        if (operand is Double) return
-        throw RuntimeError(operator.line, "Operand must be a number")
-    }
-
-    private fun checkNumberOperands(operator: Token, left: Any, right: Any) {
-        if (left is Double && right is Double) return
-        throw RuntimeError(operator.line, "Both operands must be numbers")
+    private fun unreachable(): Exception {
+        return Exception("Interpreter reached an unreachable state")
     }
 }
